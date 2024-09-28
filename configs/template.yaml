@@ -1,4 +1,4 @@
-aggregation: bulyan
+aggregation: multiKrum #bulyan
 attack_client: Backdoor
 attack_epochs: 10
 attack_server: null
@@ -31,4 +31,5 @@ selection_method: random
 single_machine: true
 tensor_board_active: true
 use_wandb: true
+#use_wandb: false ########### fc7aa50f3d8ce05187056b288d7c880b1f63d47a
 wait_for_clients: true

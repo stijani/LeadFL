@@ -44,4 +44,4 @@ def calculate_cluster_metrics(client_index, mal_index, candidates):
 if __name__ == '__main__':
     #test the clustering function
     stored_gradients = [torch.Tensor([[1.1, 2.3, 3.6], [4.2, 5.1, 6.3]]), torch.Tensor([[7, 8, 9], [10, 11, 12]]), torch.Tensor([[13, 14, 15], [16, 17.12, 18.2]]), torch.Tensor([[19, 20, 21], [22, 23, 24]]), torch.Tensor([[25, 26, 27], [28, 29.12, 30.1]]), torch.Tensor([[31, 32, 33], [34, 35, 36]])]
-    print(clustering(stored_gradients))
+    print(clustering_(stored_gradients))

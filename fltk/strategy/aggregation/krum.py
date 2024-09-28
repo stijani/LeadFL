@@ -29,6 +29,7 @@ def krum(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) 
 
     sorted_distance = dict(sorted(distances.items(), key=lambda item: item[1]))
     candidate_parameters = [tmp_parameters[idx] for idx in sorted_distance.keys()][:1]
+    print("#################", sorted_distance)
 
     new_params = {}
     for name in candidate_parameters[0].keys():
