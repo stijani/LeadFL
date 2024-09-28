@@ -24,7 +24,7 @@ class Client(Node):
     #              mal_loader: Any = None, backdoor_helper: Helper = None):
     ###############################################
     def __init__(self, identifier: str, rank: int, world_size: int, config: Config, mal: bool = False,
-                 mal_loader: Any = None, backdoor_helper: Helper = None, normalized_client_distance: float = 0.4):
+                 mal_loader: Any = None, backdoor_helper: Helper = None, normalized_client_distance: float = 0.0):
         ###############################################
         super().__init__(identifier, rank, world_size, config)
 

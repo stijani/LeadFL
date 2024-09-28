@@ -132,8 +132,8 @@ class Federator(Node):
                                 mal_loader=self.mal_loader, backdoor_helper=self.backdoor_helper)
                 ##################################
                 # update client distance or use the deafult
-                normalized_distance_default = 0.4
-                client.normalized_client_distance = self.normalized_client_distances.get(client_id, normalized_distance_default)
+                # normalized_distance_default = 0.4
+                # client.normalized_client_distance = self.normalized_client_distances.get(client_id, normalized_distance_default)
                 ##################################
                 self.clients.append(
                     LocalClient(client_name, client, 0, DataContainer(client_name, self.config.output_path,
@@ -704,10 +704,13 @@ class Federator(Node):
             self.defense_controller()
 
         ###########################################
-        # update clients regularization constant based on the last estimated multikrum distance
+        # update clients regularization constants based on the last estimated multikrum distance
         self.normalized_client_distances = normalized_client_distances  # #####
         for client in self.clients:
-            client.ref.normalized_client_distance = self.normalized_client_distances.get(client.ref.id, 0.4)
+            if client.ref.id in self.normalized_client_distances:  # only clients that participated in this round of training
+                # client.ref.normalized_client_distance = self.normalized_client_distances.get(client.ref.id, 0.4)
+                client.ref.normalized_client_distance = self.normalized_client_distances[client.ref.id]
+        # for client_id in self.normalized_client_distances:
         # for cl in selected_clients:
         #     print(f"########### round: {com_round_id}, client_id: {cl.ref.id}, reg_weight: {cl.ref.normalized_client_distance}")
         ###########################################
