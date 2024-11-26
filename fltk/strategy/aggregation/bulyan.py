@@ -5,7 +5,8 @@ import numpy as np
 import torch
 
 
-def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
+# def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
+def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
     """
     bulyan passed parameters.
 
@@ -32,9 +33,9 @@ def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]
     for name in candidate_parameters[0].keys():
         new_params[name] = sum([param[name].data for param in candidate_parameters]) / len(candidate_parameters)
 
-    return new_params
-
-
+    # return new_params
+    normalized_client_distances = None  # so that the output is always compatible
+    return new_params, normalized_client_distances
 
 
 if __name__ == "__main__":
@@ -49,6 +50,8 @@ if __name__ == "__main__":
                 '8': {'1': torch.Tensor([[85, 86, 87], [88, 89, 90]]), '2': torch.Tensor([[91, 92, 93], [94, 95, 96]])},
                 '9': {'1': torch.Tensor([[97, 98, 99], [100, 101, 102]]), '2': torch.Tensor([[103, 104, 105], [106, 107, 108]])},
                 '10': {'1': torch.Tensor([[109, 110, 111], [112, 113, 114]]), '2': torch.Tensor([[115, 116, 117], [118, 119, 120]])}}
+    # sizes = {'1': 2, '2': 2, '3': 3}
+    # print(bulyan(params, sizes))
     sizes = {'1': 2, '2': 2, '3': 3}
-    print(bulyan(params, sizes))
+    print(bulyan(params))
 

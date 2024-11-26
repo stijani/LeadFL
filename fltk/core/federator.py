@@ -37,13 +37,16 @@ class LocalClient:
     """
     Dataclass for local execution references to 'virtual' Clients.
     """
+
     name: str
     ref: NodeReference
     data_size: int
     exp_data: DataContainer
 
 
-def cb_factory(future: torch.Future, method, *args, **kwargs):  # pylint: disable=no-member
+def cb_factory(
+    future: torch.Future, method, *args, **kwargs
+):  # pylint: disable=no-member
     """
     Callback factory function to attach callbacks to a future.
     @param future: Future promise for remote function.
@@ -65,6 +68,7 @@ class Federator(Node):
     Federator implementation that governs the (possibly) distributed learning process. Learning is initiated by the
     Federator and performed by the Clients. The Federator also performs centralized logging for easier execution.
     """
+
     clients: List[LocalClient] = []
     benign_clients: List[LocalClient] = []
     mal_clients: List[LocalClient] = []
@@ -81,27 +85,31 @@ class Federator(Node):
         self.loss_function = self.config.get_loss_function()()
         self.num_rounds = config.rounds
         self.config = config
-        prefix_text = ''
+        prefix_text = ""
         if config.replication_id:
-            prefix_text = f'_r{config.replication_id}'
-        config.output_path = Path(config.output_path) / f'{config.experiment_prefix}{prefix_text}'
-        self.exp_data = DataContainer('federator', config.output_path, FederatorRecord, config.save_data_append)
+            prefix_text = f"_r{config.replication_id}"
+        config.output_path = (
+            Path(config.output_path) / f"{config.experiment_prefix}{prefix_text}"
+        )
+        self.exp_data = DataContainer(
+            "federator", config.output_path, FederatorRecord, config.save_data_append
+        )
         self.aggregation_method = get_aggregation(config.aggregation)
         self.backdoor_acc_list = []
-        self.mal_confidence_list= []
+        self.mal_confidence_list = []
         self.mal_loader = None
         self.defense_controller_counter = 0
         self.true_mal = {}
         self.stored_gradients = []
         self.stored_index = []
         self.acc_list = []
-        if self.config.attack_client == 'Backdoor':
-            with open(self.config.backdoor_config, 'r') as file:
+        if self.config.attack_client == "Backdoor":
+            with open(self.config.backdoor_config, "r") as file:
                 backdoor_params = yaml.load(file, Loader=yaml.FullLoader)
-                if self.config.backdoor_type == '1-pixel':
-                    backdoor_params['synthesizer'] = 'SinglePixel'
-                elif self.config.backdoor_type == '9-pixel':
-                    backdoor_params['synthesizer'] = 'Pattern'
+                if self.config.backdoor_type == "1-pixel":
+                    backdoor_params["synthesizer"] = "SinglePixel"
+                elif self.config.backdoor_type == "9-pixel":
+                    backdoor_params["synthesizer"] = "Pattern"
             self.backdoor_helper = Helper(backdoor_params)
         else:
             self.backdoor_helper = None
@@ -112,23 +120,42 @@ class Federator(Node):
         @return: None.
         @rtype: None
         """
-        self.logger.info('Creating clients')
+        self.logger.info("Creating clients")
         if self.config.single_machine:
             # Create direct clients
             world_size = self.config.num_clients + 1
             client_list = [i for i in range(1, self.config.world_size)]
             np.random.seed(0)
-            mal_list = np.random.choice(client_list, self.config.num_mal_clients, replace=False)
+            mal_list = np.random.choice(
+                client_list, self.config.num_mal_clients, replace=False
+            )
             self.true_mal = mal_list
-            self.logger.info(f'These Malicious clients are selected: {mal_list}')
+            self.logger.info(f"These Malicious clients are selected: {mal_list}")
             for client_id in range(1, self.config.world_size):
-                client_name = f'client{client_id}'
+                client_name = f"client{client_id}"
                 mal = True if client_id in mal_list else False
-                client = Client(client_name, client_id, world_size, copy.deepcopy(self.config), mal=mal,
-                                mal_loader=self.mal_loader, backdoor_helper=self.backdoor_helper)
+                client = Client(
+                    client_name,
+                    client_id,
+                    world_size,
+                    copy.deepcopy(self.config),
+                    mal=mal,
+                    mal_loader=self.mal_loader,
+                    backdoor_helper=self.backdoor_helper,
+                )
                 self.clients.append(
-                    LocalClient(client_name, client, 0, DataContainer(client_name, self.config.output_path,
-                                                                      ClientRecord, self.config.save_data_append)))
+                    LocalClient(
+                        client_name,
+                        client,
+                        0,
+                        DataContainer(
+                            client_name,
+                            self.config.output_path,
+                            ClientRecord,
+                            self.config.save_data_append,
+                        ),
+                    )
+                )
                 if mal:
                     self.mal_clients.append(self.clients[-1])
                 else:
@@ -146,12 +173,24 @@ class Federator(Node):
         @return: None.
         @rtype: None
         """
-        self.logger.info(f'Got new client registration from client {client_name}')
+        self.logger.info(f"Got new client registration from client {client_name}")
         if self.config.single_machine:
-            self.logger.warning('This function should not be called when in single machine mode!')
+            self.logger.warning(
+                "This function should not be called when in single machine mode!"
+            )
         self.clients.append(
-            LocalClient(client_name, client_name, rank, DataContainer(client_name, self.config.output_path,
-                                                                      ClientRecord, self.config.save_data_append)))
+            LocalClient(
+                client_name,
+                client_name,
+                rank,
+                DataContainer(
+                    client_name,
+                    self.config.output_path,
+                    ClientRecord,
+                    self.config.save_data_append,
+                ),
+            )
+        )
 
     def stop_all_clients(self):
         """
@@ -180,9 +219,9 @@ class Federator(Node):
             for client in self.clients:
                 resp = self.message(client.ref, Client.is_ready)
                 if resp:
-                    self.logger.info(f'Client {client} is ready')
+                    self.logger.info(f"Client {client} is ready")
                 else:
-                    self.logger.info(f'Waiting for client {client}')
+                    self.logger.info(f"Waiting for client {client}")
                     all_ready = False
             time.sleep(2)
 
@@ -211,11 +250,13 @@ class Federator(Node):
         self.mal_loader = self.dataset.get_mal_loaders()
         self.create_clients()
         while not self._all_clients_online():
-            msg = f'Waiting for all clients to come online. ' \
-                  f'Waiting for {self.world_size - 1 - self._num_clients_online()} clients'
+            msg = (
+                f"Waiting for all clients to come online. "
+                f"Waiting for {self.world_size - 1 - self._num_clients_online()} clients"
+            )
             self.logger.info(msg)
             time.sleep(2)
-        self.logger.info('All clients are online')
+        self.logger.info("All clients are online")
         # self.logger.info('Running')
         # time.sleep(10)
         self.client_load_data()
@@ -227,7 +268,7 @@ class Federator(Node):
             self.exec_round(communication_round)
 
         self.save_data()
-        self.logger.info('Federator is stopping')
+        self.logger.info("Federator is stopping")
 
     def save_data(self):
         """
@@ -261,12 +302,17 @@ class Federator(Node):
             if not self.message(client.ref, Client.get_client_status):
                 hessian_metrix = self.message(client.ref, Client.get_client_hessian)
                 for h in hessian_metrix:
-                    changed_percentage.append(h['ChangedPercent'])
-                    changed_magnitude.append(h['ChangedMagnitude'])
+                    changed_percentage.append(h["ChangedPercent"])
+                    changed_magnitude.append(h["ChangedMagnitude"])
         if len(changed_percentage) == 0:
             return 0, 0
-        print(sum(changed_percentage) / len(changed_percentage), sum(changed_magnitude) / len(changed_magnitude))
-        return sum(changed_percentage) / len(changed_percentage), sum(changed_magnitude) / len(changed_magnitude)
+        print(
+            sum(changed_percentage) / len(changed_percentage),
+            sum(changed_magnitude) / len(changed_magnitude),
+        )
+        return sum(changed_percentage) / len(changed_percentage), sum(
+            changed_magnitude
+        ) / len(changed_magnitude)
 
     def client_aggregate_regular_loss(self, selected_clients):
         """
@@ -298,7 +344,9 @@ class Federator(Node):
 
     def set_regular_schedule(self, communication_round):
         for client in self.clients:
-            self.message(client.ref, Client.set_client_regular_schedule, communication_round)
+            self.message(
+                client.ref, Client.set_client_regular_schedule, communication_round
+            )
 
     def test(self, net) -> Tuple[float, float, np.array]:
         """
@@ -318,7 +366,7 @@ class Federator(Node):
         loss = 0.0
         print(len(self.dataset.get_test_loader()))
         with torch.no_grad():
-            for (images, labels) in self.dataset.get_test_loader():
+            for images, labels in self.dataset.get_test_loader():
                 images, labels = images.to(self.device), labels.to(self.device)
 
                 outputs = net(images)
@@ -337,7 +385,7 @@ class Federator(Node):
 
         end_time = time.time()
         duration = end_time - start_time
-        self.logger.info(f'Test duration is {duration} seconds')
+        self.logger.info(f"Test duration is {duration} seconds")
         return accuracy, loss, confusion_mat
 
     def backdoor_test(self, net) -> Tuple[float, float, np.array]:
@@ -360,7 +408,9 @@ class Federator(Node):
         with torch.no_grad():
             for i, data in enumerate(self.dataset.get_test_loader()):
                 batch = self.backdoor_helper.task.get_batch(i, data)
-                batch = self.backdoor_helper.attack.synthesizer.make_backdoor_batch(batch, test=True, attack=True)
+                batch = self.backdoor_helper.attack.synthesizer.make_backdoor_batch(
+                    batch, test=True, attack=True
+                )
                 outputs = self.net(batch.inputs)
                 labels = batch.labels
                 _, predicted = torch.max(outputs.data, 1)  # pylint: disable=no-member
@@ -371,14 +421,16 @@ class Federator(Node):
                 pred_.extend(predicted.cpu().numpy())
 
                 loss += self.loss_function(outputs, labels).item()
-                confidence_sum += sum(F.softmax(outputs.data.detach(), dim=1).cpu().data[:, labels[0]])
+                confidence_sum += sum(
+                    F.softmax(outputs.data.detach(), dim=1).cpu().data[:, labels[0]]
+                )
         loss /= len(self.dataset.get_test_loader().dataset)
         accuracy = 100.0 * correct / total
         confidence = float(confidence_sum / total)
 
         end_time = time.time()
         duration = end_time - start_time
-        self.logger.info(f'Backdoor Test duration is {duration} seconds')
+        self.logger.info(f"Backdoor Test duration is {duration} seconds")
         return accuracy, loss, confidence
 
     def mal_test(self, net) -> Tuple[float, float, float]:
@@ -390,7 +442,7 @@ class Federator(Node):
         loss = 0.0
         confidence_sum = 0.0
         with torch.no_grad():
-            for (images, labels, labels_true) in self.mal_loader:
+            for images, labels, labels_true in self.mal_loader:
                 images, labels = images.to(self.device), labels.to(self.device)
 
                 outputs = net(images)
@@ -409,9 +461,15 @@ class Federator(Node):
                     idx_list.append(int(i))
                     label_list.append([int(labels[i].item())])
                 if self.config.net_name == Nets.cifar10_cnn:
-                    confidence_sum += sum(outputs.data.detach().cpu().data[idx_list, label_list])
+                    confidence_sum += sum(
+                        outputs.data.detach().cpu().data[idx_list, label_list]
+                    )
                 else:
-                    confidence_sum += sum(F.softmax(outputs.data.detach(), dim=1).cpu().data[idx_list, label_list])
+                    confidence_sum += sum(
+                        F.softmax(outputs.data.detach(), dim=1)
+                        .cpu()
+                        .data[idx_list, label_list]
+                    )
 
         loss /= len(self.dataset.get_test_loader().dataset)
         accuracy = 100.0 * correct / total
@@ -419,7 +477,7 @@ class Federator(Node):
 
         end_time = time.time()
         duration = end_time - start_time
-        self.logger.info(f'Backdoor Test duration is {duration} seconds')
+        self.logger.info(f"Backdoor Test duration is {duration} seconds")
         return accuracy, loss, confidence
 
     def exec_round(self, com_round_id: int):
@@ -438,36 +496,57 @@ class Federator(Node):
         np.random.seed(com_round_id + 100)  # 100 200 300
         mal_this_round = 0
 
-        if self.config.selection_method == 'random':
-            selected_clients = random_selection(self.clients, self.config.clients_per_round)
+        if self.config.selection_method == "random":
+            selected_clients = random_selection(
+                self.clients, self.config.clients_per_round
+            )
 
-        elif self.config.selection_method == 'consistent':
-            selected_benign_clients = random_selection(self.benign_clients,
-                                                       self.config.clients_per_round - self.config.mal_clients_per_round)
-            selected_mal_clients = random_selection(self.mal_clients, self.config.mal_clients_per_round)
+        elif self.config.selection_method == "consistent":
+            selected_benign_clients = random_selection(
+                self.benign_clients,
+                self.config.clients_per_round - self.config.mal_clients_per_round,
+            )
+            selected_mal_clients = random_selection(
+                self.mal_clients, self.config.mal_clients_per_round
+            )
             # combine benign and malicious clients
-            selected_clients = np.concatenate((selected_benign_clients, selected_mal_clients))
-        elif self.config.selection_method == 'periodic':
+            selected_clients = np.concatenate(
+                (selected_benign_clients, selected_mal_clients)
+            )
+        elif self.config.selection_method == "periodic":
             if com_round_id % self.config.periodic_selection_period in [0, 1, 2, 3, 4]:
-                selected_benign_clients = random_selection(self.benign_clients,
-                                                           self.config.clients_per_round - self.config.mal_clients_per_round)
-                selected_mal_clients = random_selection(self.mal_clients, self.config.mal_clients_per_round)
-                selected_clients = np.concatenate((selected_benign_clients, selected_mal_clients))
+                selected_benign_clients = random_selection(
+                    self.benign_clients,
+                    self.config.clients_per_round - self.config.mal_clients_per_round,
+                )
+                selected_mal_clients = random_selection(
+                    self.mal_clients, self.config.mal_clients_per_round
+                )
+                selected_clients = np.concatenate(
+                    (selected_benign_clients, selected_mal_clients)
+                )
             else:
-                selected_clients = random_selection(self.benign_clients, self.config.clients_per_round)
-        elif self.config.selection_method == 'random_clients':
+                selected_clients = random_selection(
+                    self.benign_clients, self.config.clients_per_round
+                )
+        elif self.config.selection_method == "random_clients":
             # random choose number from  [0, 0, 2, 2, 5]
             mal_this_round = np.random.choice([0, 0, 2, 2, 5])
-            selected_benign_clients = random_selection(self.benign_clients,
-                                                       self.config.clients_per_round - mal_this_round)
+            selected_benign_clients = random_selection(
+                self.benign_clients, self.config.clients_per_round - mal_this_round
+            )
             selected_mal_clients = random_selection(self.mal_clients, mal_this_round)
-            selected_clients = np.concatenate((selected_benign_clients, selected_mal_clients))
+            selected_clients = np.concatenate(
+                (selected_benign_clients, selected_mal_clients)
+            )
 
         if com_round_id in [0, 10, 12]:
             selected_benign_clients = random_selection(self.benign_clients, 5)
             selected_mal_clients = random_selection(self.mal_clients, 5)
             # combine benign and malicious clients
-            selected_clients = np.concatenate((selected_benign_clients, selected_mal_clients))
+            selected_clients = np.concatenate(
+                (selected_benign_clients, selected_mal_clients)
+            )
 
         # Regular schedule to avoid the regular loss to be too high
         if self.config.regular_schedule:
@@ -478,10 +557,13 @@ class Federator(Node):
         # Malicious selection
         for client in selected_clients:
             if self.message(client.ref, Client.get_client_status):
-                self.logger.info(f'Malicious client {client.ref} is selected')
+                self.logger.info(f"Malicious client {client.ref} is selected")
                 mal_this_round += 1
-        self.logger.info(f'This round {mal_this_round} malicious clients are selected')
-        clients_status = [self.message(client.ref, Client.get_client_status) for client in selected_clients]
+        self.logger.info(f"This round {mal_this_round} malicious clients are selected")
+        clients_status = [
+            self.message(client.ref, Client.get_client_status)
+            for client in selected_clients
+        ]
         last_model = self.get_nn_parameters()
 
         for client in selected_clients:
@@ -495,15 +577,41 @@ class Federator(Node):
         # Client training
         training_futures: List[torch.Future] = []  # pylint: disable=no-member
 
-        def training_cb(fut: torch.Future, client_ref: LocalClient, client_weights, client_sizes,
-                        num_epochs):  # pylint: disable=no-member
-            train_loss, weights, accuracy, test_loss, round_duration, train_duration, test_duration, c_mat = fut.wait()
-            self.logger.info(f'Training callback for client {client_ref.name} with accuracy={accuracy}')
+        def training_cb(
+            fut: torch.Future,
+            client_ref: LocalClient,
+            client_weights,
+            client_sizes,
+            num_epochs,
+        ):  # pylint: disable=no-member
+            (
+                train_loss,
+                weights,
+                accuracy,
+                test_loss,
+                round_duration,
+                train_duration,
+                test_duration,
+                c_mat,
+            ) = fut.wait()
+            self.logger.info(
+                f"Training callback for client {client_ref.name} with accuracy={accuracy}"
+            )
             client_weights[client_ref.name] = weights
             client_data_size = self.message(client_ref.ref, Client.get_client_datasize)
             client_sizes[client_ref.name] = client_data_size
-            c_record = ClientRecord(com_round_id, train_duration, test_duration, round_duration, num_epochs, 0,
-                                    accuracy, train_loss, test_loss, confusion_matrix=c_mat)
+            c_record = ClientRecord(
+                com_round_id,
+                train_duration,
+                test_duration,
+                round_duration,
+                num_epochs,
+                0,
+                accuracy,
+                train_loss,
+                test_loss,
+                confusion_matrix=c_mat,
+            )
             client_ref.exp_data.append(c_record)
 
         # defense controller
@@ -516,20 +624,26 @@ class Federator(Node):
                 start_defense = False
 
         for client in selected_clients:
-            future = self.message_async(client.ref, Client.exec_round, num_epochs, start_defense)
-            cb_factory(future, training_cb, client, client_weights, client_sizes, num_epochs)
-            self.logger.info(f'Request sent to client {client.name}')
+            future = self.message_async(
+                client.ref, Client.exec_round, num_epochs, start_defense
+            )
+            cb_factory(
+                future, training_cb, client, client_weights, client_sizes, num_epochs
+            )
+            self.logger.info(f"Request sent to client {client.name}")
             training_futures.append(future)
 
-        def all_futures_done(futures: List[torch.Future]) -> bool:  # pylint: disable=no-member
+        def all_futures_done(
+            futures: List[torch.Future],
+        ) -> bool:  # pylint: disable=no-member
             return all(map(lambda x: x.done(), futures))
 
         while not all_futures_done(training_futures):
             time.sleep(0.1)
-            self.logger.info('')
+            self.logger.info("")
             # self.logger.info(f'Waiting for other clients')
 
-        self.logger.info('Continue with rest [1]')
+        self.logger.info("Continue with rest [1]")
         time.sleep(0.5)
         mal_boost = self.config.mal_boost
 
@@ -546,7 +660,9 @@ class Federator(Node):
         boost_cnt = 0
         if self.config.mal_boost > 1 and mal_this_round > 0:
             # assert then print error message
-            assert self.config.mal_boost >= mal_this_round, 'mal_boost is less than mal_this_round'
+            assert (
+                self.config.mal_boost >= mal_this_round
+            ), "mal_boost is less than mal_this_round"
 
             for name in mal_name[1:]:
                 if mal_boost > 1:
@@ -556,13 +672,17 @@ class Federator(Node):
                     boost_cnt += 1
 
             for client in selected_clients:
-                if mal_boost > 1 and not self.message(client.ref, Client.get_client_status):
-                    client_weights[client.name] = copy.deepcopy(client_weights[mal_name[0]])
+                if mal_boost > 1 and not self.message(
+                    client.ref, Client.get_client_status
+                ):
+                    client_weights[client.name] = copy.deepcopy(
+                        client_weights[mal_name[0]]
+                    )
                     client_sizes[client.name] = client_sizes[mal_name[0]]
                     mal_boost -= 1
                     boost_cnt += 1
 
-        print(f'Boosted {boost_cnt} clients')
+        print(f"Boosted {boost_cnt} clients")
 
         # calculate the gradients for clustering
         if self.config.cluster is True:
@@ -570,46 +690,80 @@ class Federator(Node):
             # print(f'Client gradients: {client_gradients}')
             # update the gradients
             self.update_stored_gradients(client_gradients)
-            majority_id, candidates = clustering(self.stored_gradients, self.stored_index,
-                                                 self.config.clients_per_round, self.config.cluster_stored_rounds)
-            print(f'Majority id: {majority_id}')
-            print(f'Candidate ids: {candidates}')
+            majority_id, candidates = clustering(
+                self.stored_gradients,
+                self.stored_index,
+                self.config.clients_per_round,
+                self.config.cluster_stored_rounds,
+            )
+            print(f"Majority id: {majority_id}")
+            print(f"Candidate ids: {candidates}")
             # only selected candidates clients
             if len(candidates) > 0:
-                client_weights = {k: v for k, v in client_weights.items() if k in candidates}
-                client_sizes = {k: v for k, v in client_sizes.items() if k in candidates}
+                client_weights = {
+                    k: v for k, v in client_weights.items() if k in candidates
+                }
+                client_sizes = {
+                    k: v for k, v in client_sizes.items() if k in candidates
+                }
                 # num of candidates in mal_name
-                self.cluster_acc, self.cluster_recall, self.cluster_precision = calculate_cluster_metrics(
-                    self.stored_index[-self.config.clients_per_round:],
-                    mal_name, candidates)
+                self.cluster_acc, self.cluster_recall, self.cluster_precision = (
+                    calculate_cluster_metrics(
+                        self.stored_index[-self.config.clients_per_round :],
+                        mal_name,
+                        candidates,
+                    )
+                )
 
-        updated_model = self.aggregation_method(client_weights,
-                                                client_sizes) if self.config.aggregation != 'trmean' \
-            else self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
+        # updated_model = (self.aggregation_method(client_weights, client_sizes) if self.config.aggregation != "trmean" else self.aggregation_method(client_weights, client_sizes, self.config.tm_beta))
+        
+        # select aggregator and compute updated weights
+        if self.config.aggregation == "pseudo-krum":
+            updated_model = self.pseudo_krum_method(client_weights, client_sizes, self.net, self.device)
+        elif self.config.aggregation == "trmean":
+            updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
+        else:
+            updated_model = self.aggregation_method(client_weights, client_sizes)
+
         if self.config.cluster is False or len(candidates) > 0:
             self.update_nn_parameters(updated_model)
         test_accuracy, test_loss, conf_mat = self.test(self.net)
         mal_accuracy, mal_loss, mal_confidence = self.mal_test(self.net)
-        if self.config.attack_client == 'Backdoor':
-            backdoor_accuracy, backdoor_loss, backdoor_confidence = self.backdoor_test(self.net)
+        if self.config.attack_client == "Backdoor":
+            backdoor_accuracy, backdoor_loss, backdoor_confidence = self.backdoor_test(
+                self.net
+            )
         else:
             backdoor_accuracy = 0
             backdoor_loss = 0
             backdoor_confidence = 0
-        self.logger.info(f'[Round {com_round_id:>3}] Federator has a accuracy of {test_accuracy} and loss={test_loss}')
         self.logger.info(
-            f'[Round {com_round_id:>3}] Federator has a Malicious accuracy of {mal_accuracy} and loss={mal_loss}, malicious confidence={mal_confidence}')
+            f"[Round {com_round_id:>3}] Federator has a accuracy of {test_accuracy} and loss={test_loss}"
+        )
+        self.logger.info(
+            f"[Round {com_round_id:>3}] Federator has a Malicious accuracy of {mal_accuracy} and loss={mal_loss}, malicious confidence={mal_confidence}"
+        )
         end_time = time.time()
         duration = end_time - start_time
-        record = FederatorRecord(len(selected_clients), com_round_id, duration, test_loss, test_accuracy, mal_loss,
-                                 mal_accuracy, mal_confidence,
-                                 confusion_matrix=conf_mat)
+        record = FederatorRecord(
+            len(selected_clients),
+            com_round_id,
+            duration,
+            test_loss,
+            test_accuracy,
+            mal_loss,
+            mal_accuracy,
+            mal_confidence,
+            confusion_matrix=conf_mat,
+        )
 
-        changed_percentage, changed_magnitude = self.client_aggregate_hessian(selected_clients)
+        changed_percentage, changed_magnitude = self.client_aggregate_hessian(
+            selected_clients
+        )
         regular_loss = self.client_aggregate_regular_loss(selected_clients)
 
         # keep the backdoor average accuracy of every ten rounds
-        if self.config.attack_client == 'Backdoor':
+        if self.config.attack_client == "Backdoor":
             self.backdoor_acc_list.append(backdoor_accuracy)
             if com_round_id == self.config.rounds - 1:
                 self.backdoor_acc_list = np.array(self.backdoor_acc_list)
@@ -617,35 +771,65 @@ class Federator(Node):
                 post_round = 10 if self.config.rounds > 10 else self.config.rounds
                 for i in range(post_round):
                     backdoor_acc_list.append(np.mean(self.backdoor_acc_list[i::10]))
-                    wandb.summary[f'backdoor_acc{i}'] = backdoor_acc_list[-1]
+                    wandb.summary[f"backdoor_acc{i}"] = backdoor_acc_list[-1]
         self.mal_confidence_list.append(float(mal_confidence))
         self.acc_list.append(float(test_accuracy))
         if com_round_id == self.config.rounds - 1:
-            wandb.summary['global_acc'] = test_accuracy
-            wandb.summary['attack'] = self.config.attack_client
-            if self.config.attack_client == 'Backdoor':
-                wandb.summary['backdoor_type'] = self.config.backdoor_type
-            wandb.summary['aggregation'] = self.config.aggregation.value
-            wandb.summary['defense'] = self.config.defense
+            wandb.summary["global_acc"] = test_accuracy
+            wandb.summary["attack"] = self.config.attack_client
+            if self.config.attack_client == "Backdoor":
+                wandb.summary["backdoor_type"] = self.config.backdoor_type
+            wandb.summary["aggregation"] = self.config.aggregation.value
+            wandb.summary["defense"] = self.config.defense
             sum_table = wandb.Table(
-                columns=['TargetedAttack', 'UntargetedAttack', 'defense', 'aggregation', 'backdoor_type', 'clustering',
-                         'global_acc', 'backdoor_accuracy_avg',
-                         'backdoor_accuracy_final', 'malicious_confidence_avg', 'malicious_confidence_final', 'global_acc_highest'])
-            sum_table.add_data(self.config.attack_client,
-                               self.config.attack_server.name if self.config.attack_server is not None else None,
-                               self.config.defense,
-                               self.config.aggregation.value,
-                               self.config.backdoor_type if self.config.attack_client == 'Backdoor' else None,
-                               self.config.cluster_stored_rounds if self.config.cluster else None,
-                               test_accuracy,
-                               np.mean(backdoor_acc_list) if self.config.attack_client == 'Backdoor' else None,
-                               self.backdoor_acc_list[-1] if self.config.attack_client == 'Backdoor' else None,
-                               np.mean(self.mal_confidence_list),
-                               self.mal_confidence_list[-1],
-                               np.max(self.acc_list))
-            wandb.summary['summary'] = sum_table
-            wandb.log({'summary': sum_table})
-            artifact = wandb.Artifact('sum_table', 'dataset')
+                columns=[
+                    "TargetedAttack",
+                    "UntargetedAttack",
+                    "defense",
+                    "aggregation",
+                    "backdoor_type",
+                    "clustering",
+                    "global_acc",
+                    "backdoor_accuracy_avg",
+                    "backdoor_accuracy_final",
+                    "malicious_confidence_avg",
+                    "malicious_confidence_final",
+                    "global_acc_highest",
+                ]
+            )
+            sum_table.add_data(
+                self.config.attack_client,
+                (
+                    self.config.attack_server.name
+                    if self.config.attack_server is not None
+                    else None
+                ),
+                self.config.defense,
+                self.config.aggregation.value,
+                (
+                    self.config.backdoor_type
+                    if self.config.attack_client == "Backdoor"
+                    else None
+                ),
+                self.config.cluster_stored_rounds if self.config.cluster else None,
+                test_accuracy,
+                (
+                    np.mean(backdoor_acc_list)
+                    if self.config.attack_client == "Backdoor"
+                    else None
+                ),
+                (
+                    self.backdoor_acc_list[-1]
+                    if self.config.attack_client == "Backdoor"
+                    else None
+                ),
+                np.mean(self.mal_confidence_list),
+                self.mal_confidence_list[-1],
+                np.max(self.acc_list),
+            )
+            wandb.summary["summary"] = sum_table
+            wandb.log({"summary": sum_table})
+            artifact = wandb.Artifact("sum_table", "dataset")
             artifact.add(sum_table, "sum_table")
 
             wandb.log_artifact(artifact)
@@ -654,19 +838,43 @@ class Federator(Node):
             wandb.log({"Cluster/accuracy": self.cluster_acc}, step=com_round_id)
             wandb.log({"Cluster/recall": self.cluster_recall}, step=com_round_id)
             wandb.log({"Cluster/precision": self.cluster_precision}, step=com_round_id)
-            wandb.log({"Federator/Accuracy": test_accuracy, "Federator/Loss": test_loss,
-                       "Federator/Malicious number this round": mal_this_round}, step=com_round_id)
-            wandb.log({"Malicious/Accuracy": mal_accuracy, "Malicious/Loss": mal_loss,
-                       "Malicious/Confidence": mal_confidence}, step=com_round_id)
+            wandb.log(
+                {
+                    "Federator/Accuracy": test_accuracy,
+                    "Federator/Loss": test_loss,
+                    "Federator/Malicious number this round": mal_this_round,
+                },
+                step=com_round_id,
+            )
+            wandb.log(
+                {
+                    "Malicious/Accuracy": mal_accuracy,
+                    "Malicious/Loss": mal_loss,
+                    "Malicious/Confidence": mal_confidence,
+                },
+                step=com_round_id,
+            )
             wandb.log({"round": com_round_id}, step=com_round_id)
             wandb.log(
-                {"Federator/Changed percentage": changed_percentage, "Federator/Changed magnitude": changed_magnitude},
-                step=com_round_id)
+                {
+                    "Federator/Changed percentage": changed_percentage,
+                    "Federator/Changed magnitude": changed_magnitude,
+                },
+                step=com_round_id,
+            )
             wandb.log({"Federator/Regular loss": regular_loss}, step=com_round_id)
-            wandb.log({"Backdoor/Backdoor accuracy": backdoor_accuracy, "Backdoor/Backdoor loss": backdoor_loss,
-                       "Backdoor/Backdoor Confidence": backdoor_confidence}, step=com_round_id)
+            wandb.log(
+                {
+                    "Backdoor/Backdoor accuracy": backdoor_accuracy,
+                    "Backdoor/Backdoor loss": backdoor_loss,
+                    "Backdoor/Backdoor Confidence": backdoor_confidence,
+                },
+                step=com_round_id,
+            )
         self.exp_data.append(record)
-        self.logger.info(f'[Round {com_round_id:>3}] Round duration is {duration} seconds')
+        self.logger.info(
+            f"[Round {com_round_id:>3}] Round duration is {duration} seconds"
+        )
 
         if self.config.defense_controller:
             self.defense_controller()
@@ -678,16 +886,24 @@ class Federator(Node):
         elif self.config.attack_client is not None:
             attack_name = self.config.attack_client
         else:
-            attack_name = 'noAttack'
-        if attack_name == 'Backdoor':
-            attack_name = 'Backdoor' + str(self.config.backdoor_type)
-        defense_name = self.config.defense if self.config.defense is not None else 'noDefense'
-        run_name = aggregation_name + '_' + attack_name + '_vs_' + defense_name
+            attack_name = "noAttack"
+        if attack_name == "Backdoor":
+            attack_name = "Backdoor" + str(self.config.backdoor_type)
+        defense_name = (
+            self.config.defense if self.config.defense is not None else "noDefense"
+        )
+        run_name = aggregation_name + "_" + attack_name + "_vs_" + defense_name
         if self.config.cluster == True:
-            run_name = run_name + '_cluster' + str(self.config.cluster_stored_rounds)
+            run_name = run_name + "_cluster" + str(self.config.cluster_stored_rounds)
         wandb.init(
-            project=self.config.experiment_prefix + '_' + self.config.dataset_name.name + '_' + self.config.data_sampler.name,
-            name=run_name, entity="tudlab")
+            project=self.config.experiment_prefix
+            + "_"
+            + self.config.dataset_name.name
+            + "_"
+            + self.config.data_sampler.name,
+            name=run_name,
+            entity="tudlab",
+        )
 
         wandb.config = {
             "defense": self.config.defense,
@@ -703,7 +919,7 @@ class Federator(Node):
             "mal_boost": self.config.mal_boost,
             "mal_samples": self.config.mal_samples,
             "num_mal_clients": self.config.num_mal_clients,
-            "clients_per_round": self.config.clients_per_round
+            "clients_per_round": self.config.clients_per_round,
         }
 
     def defense_controller(self):
@@ -713,9 +929,17 @@ class Federator(Node):
         Returns:
         """
         if len(self.exp_data.records) > 1:
-            if self.exp_data.records[-2].test_accuracy - self.exp_data.records[-1].test_accuracy > 0.5:
+            if (
+                self.exp_data.records[-2].test_accuracy
+                - self.exp_data.records[-1].test_accuracy
+                > 0.5
+            ):
                 self.logger.info("Accuracy Drop Detected, Start Defense")
-                self.defense_controller_counter = 5 if self.defense_controller_counter == 0 else self.defense_controller_counter
+                self.defense_controller_counter = (
+                    5
+                    if self.defense_controller_counter == 0
+                    else self.defense_controller_counter
+                )
 
     def calculate_gradients(self, client_weights: dict):
         """
@@ -735,7 +959,9 @@ class Federator(Node):
             client_weights_dict = client_weights[client_name]
             # calculate the gradients
             for key in client_weights_dict:
-                gradients[key] = client_weights_dict[key].data - last_model[key].data.to('cpu')
+                gradients[key] = client_weights_dict[key].data - last_model[
+                    key
+                ].data.to("cpu")
             client_gradients[client_name] = gradients
         return client_gradients
 
@@ -747,12 +973,15 @@ class Federator(Node):
             # extract client number from the string like 'client1'
             # client_index = int(re.findall(r'\d+', client_name)[0])
             self.stored_index.append(client_name)
-            gradients = [torch.flatten(client_gradients[key]) for key in client_gradients]
+            gradients = [
+                torch.flatten(client_gradients[key]) for key in client_gradients
+            ]
             gradients = torch.cat(gradients).view(1, -1)
             self.stored_gradients.append(gradients.numpy())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     def update_stored_gradients(clients_gradients):
         # init numpy array
         gradients_array = []
@@ -760,9 +989,11 @@ if __name__ == '__main__':
         for client_name in clients_gradients:
             client_gradients = clients_gradients[client_name]
             # extract client number from the string like 'client1'
-            client_index = int(re.findall(r'\d+', client_name)[0])
+            client_index = int(re.findall(r"\d+", client_name)[0])
             clients_index.append(client_index)
-            gradients = [torch.flatten(client_gradients[key]) for key in client_gradients]
+            gradients = [
+                torch.flatten(client_gradients[key]) for key in client_gradients
+            ]
             gradients = torch.cat(gradients).view(1, -1)
             gradients_array.append(gradients.numpy())
         # convert to numpy array
@@ -770,9 +1001,16 @@ if __name__ == '__main__':
         client_index = np.array(clients_index)
         return gradients_array, clients_index
 
-
     # test update_stored_gradients
-    client_gradients = {'client1': {'conv1.weight': torch.tensor([[1, 2], [3, 4]]), 'conv1.bias': torch.tensor([1, 2])},
-                        'client2': {'conv1.weight': torch.tensor([[1, 2], [3, 4]]), 'conv1.bias': torch.tensor([1, 2])}}
+    client_gradients = {
+        "client1": {
+            "conv1.weight": torch.tensor([[1, 2], [3, 4]]),
+            "conv1.bias": torch.tensor([1, 2]),
+        },
+        "client2": {
+            "conv1.weight": torch.tensor([[1, 2], [3, 4]]),
+            "conv1.bias": torch.tensor([1, 2]),
+        },
+    }
     a = update_stored_gradients(client_gradients)
     print(a[0].shape)
