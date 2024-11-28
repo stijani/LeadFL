@@ -1,11 +1,11 @@
-aggregation: multiKrum_pseudo
+aggregation: bulyan  # multiKrum
 attack_client: Backdoor
 attack_epochs: 10
 attack_server: null
-backdoor_config: configs/backdoor_tasks/mnist_params_pattern.yaml
+backdoor_config: configs/backdoor_tasks/cifar10_params.yaml #configs/backdoor_tasks/mnist_params_pattern.yaml
 backdoor_type: 9-pixel
 batch_size: 32
-clients_per_round: 10
+clients_per_round: 10 # 10
 cluster: false
 cluster_stored_rounds: 10
 cuda: true
@@ -13,22 +13,23 @@ data_sampler: uniform
 data_sampler_args:
 - 5
 - 42
-dataset_name: fashion-mnist
-defense: null
+dataset_name: cifar10 #fashion-mnist
+defense: LeadFL
 epochs: 10
-experiment_prefix: COMPARE-ALL-AGGREGATORS-WITH-LeadFL # Final
+experiment_prefix: Final
 mal_boost: 1
 mal_clients_per_round: 2
-net_name: FashionMNISTCNN
+net_name: Cifar10CNN #FashionMNISTCNN
 num_clients: 100
 num_mal_clients: 25
 offload_stategy: deadline
 output_location: output
 pert_strength: 0.2
 regular_weight: 0.4
-rounds: 40 #80
+rounds: 80
 selection_method: random
 single_machine: true
 tensor_board_active: true
 use_wandb: true
+#use_wandb: false ########### fc7aa50f3d8ce05187056b288d7c880b1f63d47a
 wait_for_clients: true

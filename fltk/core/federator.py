@@ -714,13 +714,11 @@ class Federator(Node):
                         candidates,
                     )
                 )
-
-        # updated_model = (self.aggregation_method(client_weights, client_sizes) if self.config.aggregation != "trmean" else self.aggregation_method(client_weights, client_sizes, self.config.tm_beta))
         
         # select aggregator and compute updated weights
-        if self.config.aggregation == "pseudo-krum":
-            updated_model = self.pseudo_krum_method(client_weights, client_sizes, self.net, self.device)
-        elif self.config.aggregation == "trmean":
+        if self.config.aggregation.value in ["krum_pseudo", "multiKrum_pseudo"]:
+            updated_model = self.aggregation_method(client_weights, client_sizes, self.net, self.device)
+        elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
         else:
             updated_model = self.aggregation_method(client_weights, client_sizes)
@@ -902,7 +900,7 @@ class Federator(Node):
             + "_"
             + self.config.data_sampler.name,
             name=run_name,
-            entity="tudlab",
+            # entity="tudlab",
         )
 
         wandb.config = {

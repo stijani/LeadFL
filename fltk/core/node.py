@@ -166,6 +166,11 @@ class Node(abc.ABC):
             pass
             # self.offloaded_net.load_state_dict(copy.deepcopy(new_params), strict=True)
         else:
+            ################################### Saheed
+            # TODO: find out why this was retunning tuple rather dict
+            if isinstance(new_params, tuple):
+                new_params = new_params[0]
+            ##################################
             self.net.load_state_dict(copy.deepcopy(new_params), strict=True)
 
     def message(self, other_node: str, method: Callable, *args, **kwargs): # pylint: disable=no-member

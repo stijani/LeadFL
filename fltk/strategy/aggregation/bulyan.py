@@ -6,12 +6,14 @@ import torch
 
 
 # def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
-def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], useless=None) -> Dict[str, torch.Tensor]:
     """
     bulyan passed parameters.
 
     :param parameters: nn model named parameters with client index
     :type parameters: list
+    :param uselss: added to ensure that the function has a similar signature to others  ########
+    :type parameters: None
     """
     multi_krum = 5
     candidate_num = 7

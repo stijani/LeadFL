@@ -9,7 +9,7 @@ from pathlib import Path
 
 import torch.distributed as dist
 import yaml
-##### from kubernetes import config
+from kubernetes import config
 from torch.distributed import rpc
 
 from fltk.core.client import Client

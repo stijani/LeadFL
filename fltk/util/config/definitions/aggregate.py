@@ -11,3 +11,5 @@ class Aggregations(Enum):
     bulyan = 'bulyan'
     krum = 'krum'
     multiKrum = 'multiKrum'
+    krum_pseudo = 'krum_pseudo'
+    multiKrum_pseudo = "multiKrum_pseudo"

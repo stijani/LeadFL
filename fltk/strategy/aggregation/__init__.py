@@ -4,8 +4,11 @@ from .fed_avg import fed_avg
 from  .median import median
 from .trmean import trimmed_mean
 from .bulyan import bulyan
+from .krum_pseudo import krum_pseudo, multiKrum_pseudo
 from .krum import krum
 from .multiKrum import multiKrum
+
+
 def get_aggregation(name: Aggregations):
     """
     Helper function to get specific Aggregation class references.
@@ -23,6 +26,9 @@ def get_aggregation(name: Aggregations):
             Aggregations.avg: lambda x: x*2,
             Aggregations.bulyan: bulyan,
             Aggregations.krum: krum,
-            Aggregations.multiKrum: multiKrum
+            Aggregations.multiKrum: multiKrum,
+            Aggregations.krum_pseudo: krum_pseudo,
+            Aggregations.multiKrum_pseudo: multiKrum_pseudo,
         }
+
     return aggregations_dict[enum_type]
