@@ -1,4 +1,4 @@
-aggregation: multiKrum_pseudo
+aggregation: krum_pseudo
 attack_client: Backdoor
 attack_epochs: 10
 attack_server: null
@@ -16,7 +16,7 @@ data_sampler_args:
 dataset_name: fashion-mnist
 defense: null
 epochs: 10
-experiment_prefix: COMPARE-ALL-AGGREGATORS-WITH-LeadFL # Final
+experiment_prefix: SCORED-USING-CLIENT2CLIENT-AND-CLIENT2SERVER # Final
 mal_boost: 1
 mal_clients_per_round: 2
 net_name: FashionMNISTCNN

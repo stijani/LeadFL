@@ -717,14 +717,14 @@ class Federator(Node):
         
         # select aggregator and compute updated weights
         if self.config.aggregation.value in ["krum_pseudo", "multiKrum_pseudo"]:
-            updated_model = self.aggregation_method(client_weights, client_sizes, self.net, self.device)
+            updated_model = self.aggregation_method(client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model 
         elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
         else:
             updated_model = self.aggregation_method(client_weights, client_sizes)
 
         if self.config.cluster is False or len(candidates) > 0:
-            self.update_nn_parameters(updated_model)
+            self.update_nn_parameters(updated_model)  ########### global model (self.net) is update here, before this function call, it was always the previoous round's global model
         test_accuracy, test_loss, conf_mat = self.test(self.net)
         mal_accuracy, mal_loss, mal_confidence = self.mal_test(self.net)
         if self.config.attack_client == "Backdoor":
