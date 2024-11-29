@@ -19,12 +19,13 @@ def generate_seeded_pseudo_patterns(batch_size, input_shape, device, seed=42):
 
 
 def optimize_single_batch(
+    config,
     model,
     labels: List[int],
     device: str,
     input_shape: Tuple = (1, 28, 28),
-    iterations: int = 100,  # 10(best so far) # 100,
-    lr: float = 0.01  # 0.01 SGD, serveronly(best so far), #0.5,
+    # iterations: int = 100,  # 10(best so far) # 100,
+    # lr: float = 0.001  # 0.01 SGD, serveronly(best so far), #0.5,
 ):
     """
     Optimize a single batch of pseudo patterns for a given set of labels.
@@ -56,13 +57,13 @@ def optimize_single_batch(
 
     # Create an optimizer for the current batch
     # optimizer = Adam([pseudo_patterns], lr=lr)
-    optimizer = torch.optim.SGD([pseudo_patterns], lr=lr, momentum=0.99)
+    optimizer = torch.optim.SGD([pseudo_patterns], lr=config.pseudo_lr, momentum=config.pseudo_momentum)
 
     # Labels tensor for the batch
     labels_tensor = torch.tensor(labels, device=device)
 
     # Optimize the pseudo patterns for the current batch
-    for _ in range(iterations):
+    for _ in range(config.pseudo_iterations):
         optimizer.zero_grad()
 
         # Forward pass: Compute model outputs for the batch
@@ -82,6 +83,7 @@ def optimize_single_batch(
 
 
 def generate_pseudo_patterns(
+    config,
     parameters: Dict[str, Dict[str, torch.Tensor]],
     model: nn.Module,
     device: torch.device,
@@ -102,13 +104,14 @@ def generate_pseudo_patterns(
 
     if global_params:
         model.load_state_dict(copy.deepcopy(global_params), strict=True)
-        pseudo_per_label_global = optimize_single_batch(model, labels, device)
+        pseudo_per_label_global = optimize_single_batch(config, model, labels, device)
 
     client_pseudo_dict = {}
-    for idx, client_id in enumerate(parameters.keys()):
+    # for idx, client_id in enumerate(parameters.keys()):
+    for idx, client_id in enumerate(sorted(parameters.keys())):
         model.load_state_dict(copy.deepcopy(parameters[client_id]), strict=True)
         # model.load_state_dict(parameters[client_id])
-        pseudo_per_label = optimize_single_batch(model, labels, device)
+        pseudo_per_label = optimize_single_batch(config, model, labels, device)
         pseudo_per_label_dict = {lab: pseudo for lab, pseudo in enumerate(pseudo_per_label)}
         client_pseudo_dict[idx] = pseudo_per_label_dict
     return client_pseudo_dict, pseudo_per_label_global
@@ -188,12 +191,13 @@ def calculate_server_client_distance(
             )
             total_distance += dist
 
-        server_client_distances[i] = total_distance
+        server_client_distances[i] = total_distance  ####### normalize this by dividing by the client sample count
 
     return server_client_distances
 
 
 def krum_pseudo(
+    config,
     parameters: Dict[str, Dict[str, torch.Tensor]],
     client_sizes: List[int],
     model: nn.Module,
@@ -205,14 +209,25 @@ def krum_pseudo(
     """
     Krum: Select the most representative client.
     """
+    client_id_to_int = {i: client_id for i, client_id in enumerate(sorted(parameters.keys()))}
 
     global_params = copy.deepcopy(model.state_dict())
     # Generate pseudo patterns
-    client_pseudo_dict, server_pseudo_patterns = generate_pseudo_patterns(parameters, model, device, num_classes, global_params)
+    client_pseudo_dict, server_pseudo_patterns = generate_pseudo_patterns(config, parameters, model, device, num_classes, global_params)
 
     # Calculate total scores
-    scores_client2client = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
+    # scores_client2client = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
     scores_client2server = calculate_server_client_distance(client_pseudo_dict, server_pseudo_patterns, num_clients=num_clients, num_classes=num_classes)
+
+    ######################################################
+    # print("#############1", client_sizes)
+    # print("#############2", list(parameters.keys()))
+    # raise ValueError
+    # # normalize = True
+    # # if normalize:
+    # #     scores_client2client = 
+    # #     scores_client2client
+    ######################################################
 
     alpha = 0.5
     # final_scores = scores_client2client + alpha * scores_client2server  # TODO: 1. make optional to add scores_client2server 2. make alpha an argument
@@ -222,12 +237,15 @@ def krum_pseudo(
 
     # Select the client with the lowest total score
     best_client_index = np.argmin(final_scores)
+    best_client_id = client_id_to_int[best_client_index]
     best_client_id = list(parameters.keys())[best_client_index]
 
     return parameters[best_client_id]
+    ###### return parameters[best_client_id] # fix
 
 
 def multiKrum_pseudo(
+    config,
     parameters: Dict[str, Dict[str, torch.Tensor]],
     client_sizes: List[int],
     model: nn.Module,
@@ -242,15 +260,19 @@ def multiKrum_pseudo(
     """
     # labels = list(range(10))
 
+    global_params = copy.deepcopy(model.state_dict())
+
     # Generate pseudo patterns
-    client_pseudo_dict, server_pseudo_patterns = generate_pseudo_patterns(parameters, model, device, num_classes)
+    client_pseudo_dict, server_pseudo_patterns = generate_pseudo_patterns(config, parameters, model, device, num_classes, global_params)
 
     # Calculate total scores
-    scores_client2client = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
-    scores_client2server = calculate_server_client_distance(client_pseudo_dict, server_pseudo_patterns, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
+    # scores_client2client = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
+    scores_client2server = calculate_server_client_distance(client_pseudo_dict, server_pseudo_patterns, num_clients=num_clients, num_classes=num_classes)
 
     alpha = 1
-    final_scores = scores_client2client + alpha * scores_client2server
+    # final_scores = scores_client2client + alpha * scores_client2server
+    # final_scores = scores_client2client
+    final_scores = scores_client2server
 
     # Select the indices of the `num_selected` clients with the lowest total scores
     selected_indices = np.argsort(final_scores)[:num_selected]

@@ -717,7 +717,7 @@ class Federator(Node):
         
         # select aggregator and compute updated weights
         if self.config.aggregation.value in ["krum_pseudo", "multiKrum_pseudo"]:
-            updated_model = self.aggregation_method(client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model 
+            updated_model = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model 
         elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
         else:
@@ -890,9 +890,9 @@ class Federator(Node):
         defense_name = (
             self.config.defense if self.config.defense is not None else "noDefense"
         )
-        run_name = aggregation_name + "_" + attack_name + "_vs_" + defense_name
-        if self.config.cluster == True:
-            run_name = run_name + "_cluster" + str(self.config.cluster_stored_rounds)
+        run_name = f"{self.config.run_prefix}_{aggregation_name}_{attack_name}_vs_{defense_name}"
+        if self.config.cluster:
+            run_name = f"{self.config.run_prefix}_{run_name}_cluster{str(self.config.cluster_stored_rounds)}"
         wandb.init(
             project=self.config.experiment_prefix
             + "_"

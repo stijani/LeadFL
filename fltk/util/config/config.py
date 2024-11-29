@@ -58,7 +58,7 @@ class Config:
     momentum: float = 0.1
     cuda: bool = False
     shuffle: bool = False
-    log_interval: int = 10
+    log_interval: int = 1000  # 10
     scheduler_step_size: int = 50
     scheduler_gamma: float = 0.5
     min_lr: float = 1e-10
@@ -124,6 +124,12 @@ class Config:
     # backdoor attack
     backdoor_config: str = 'configs/mnist_params.yaml'
     backdoor_type: str = '1-pixel'
+    #######################
+    pseudo_lr: float = 0.0
+    pseudo_momentum: float = 0.0
+    pseudo_iterations: int = 0
+    run_prefix: str = ""
+    #######################
     def update_rng_seed(self):
         torch.manual_seed(self.rng_seed)
 
