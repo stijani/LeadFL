@@ -114,6 +114,11 @@ class Federator(Node):
         else:
             self.backdoor_helper = None
 
+        ##################
+        self.client_pseudo_dict = {}
+        self.server_pseudo_patterns = None
+        ##################
+
     def create_clients(self):
         """
         Function to create references to all the clients that will perform the learning process.
@@ -540,13 +545,17 @@ class Federator(Node):
                 (selected_benign_clients, selected_mal_clients)
             )
 
-        if com_round_id in [0, 10, 12]:
-            selected_benign_clients = random_selection(self.benign_clients, 5)
-            selected_mal_clients = random_selection(self.mal_clients, 5)
-            # combine benign and malicious clients
-            selected_clients = np.concatenate(
-                (selected_benign_clients, selected_mal_clients)
-            )
+        ##########################################################
+        ##########################################################
+        # if com_round_id in [0, 10, 12]:
+        #     selected_benign_clients = random_selection(self.benign_clients, 5)
+        #     selected_mal_clients = random_selection(self.mal_clients, 5)
+        #     # combine benign and malicious clients
+        #     selected_clients = np.concatenate(
+        #         (selected_benign_clients, selected_mal_clients)
+        #     )
+        #########################################################
+        #########################################################
 
         # Regular schedule to avoid the regular loss to be too high
         if self.config.regular_schedule:
@@ -717,7 +726,11 @@ class Federator(Node):
         
         # select aggregator and compute updated weights
         if self.config.aggregation.value in ["krum_pseudo", "multiKrum_pseudo"]:
-            updated_model = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model 
+            # updated_model = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model
+            updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, self.client_pseudo_dict, self.server_pseudo_patterns)
+            # updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, None, None)
+            self.client_pseudo_dict = client_pseudo_dict
+            self.server_pseudo_patterns = server_pseudo_patterns
         elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
         else:
@@ -890,9 +903,9 @@ class Federator(Node):
         defense_name = (
             self.config.defense if self.config.defense is not None else "noDefense"
         )
-        run_name = f"{self.config.run_prefix}_{aggregation_name}_{attack_name}_vs_{defense_name}"
+        run_name = f"{self.config.run_prefix}{aggregation_name}_{attack_name}_vs_{defense_name}"
         if self.config.cluster:
-            run_name = f"{self.config.run_prefix}_{run_name}_cluster{str(self.config.cluster_stored_rounds)}"
+            run_name = f"{self.config.run_prefix}{run_name}_cluster{str(self.config.cluster_stored_rounds)}"
         wandb.init(
             project=self.config.experiment_prefix
             + "_"

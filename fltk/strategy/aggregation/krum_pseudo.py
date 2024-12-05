@@ -4,117 +4,97 @@ import torch
 import numpy as np
 from torch import nn
 from torch.optim import Adam
+import random
+import time
+from distance_calculation import cosine_distance, euclidean_distance
 
 
-def generate_seeded_pseudo_patterns(batch_size, input_shape, device, seed=42):
+SEED = 42
+
+
+def generate_seeded_pseudo_patterns(batch_size=1, input_shape=(1, 28, 28), device=None, seed=42):
     if seed is not None:
         torch.manual_seed(seed)  # Seed the RNG for reproducibility
         if device.type == "cuda":  # If using CUDA, seed the CUDA RNG as well
             torch.cuda.manual_seed(seed)
-
     pseudo_patterns = torch.rand(
         (batch_size, *input_shape), requires_grad=True, device=device
     )
     return pseudo_patterns
 
 
-def optimize_single_batch(
+def optimize_pseudo_pattern_batch(
     config,
     model,
-    labels: List[int],
+    label_batch: List[int],
     device: str,
-    input_shape: Tuple = (1, 28, 28),
-    # iterations: int = 100,  # 10(best so far) # 100,
-    # lr: float = 0.001  # 0.01 SGD, serveronly(best so far), #0.5,
+    pseudo_pattern_batch,
 ):
-    """
-    Optimize a single batch of pseudo patterns for a given set of labels.
+    optimizer = torch.optim.SGD([pseudo_pattern_batch], lr=config.pseudo_lr, momentum=config.pseudo_momentum)
+    # optimizer = optimizer = Adam([pseudo_pattern_batch], lr=0.0001)
+    labels_tensor = torch.tensor(label_batch, device=device)
 
-    Args:
-        model: The PyTorch model used for computing activations.
-        input_shape: Shape of the input tensor (channel, height, width).
-        iterations: Number of optimization iterations.
-        lr: Learning rate for the optimizer.
-        labels: A list of labels corresponding to the patterns in this batch.
-        device: The device to run the computations on ('cuda' or 'cpu').
-
-    Returns:
-        A tensor of optimized pseudo patterns for this batch.
-    """
-    # Adjust input shape to channel-first if required
-    if input_shape[0] > 3:
-        input_shape = input_shape[::-1]
-
-    # Batch size is determined by the number of labels
-    batch_size = len(labels)
-
-    # Initialize pseudo patterns for the current batch
-    # pseudo_patterns = torch.rand(
-    #     (batch_size, *input_shape), requires_grad=True, device=device
-    # )
-
-    pseudo_patterns = generate_seeded_pseudo_patterns(batch_size, input_shape, device)
-
-    # Create an optimizer for the current batch
-    # optimizer = Adam([pseudo_patterns], lr=lr)
-    optimizer = torch.optim.SGD([pseudo_patterns], lr=config.pseudo_lr, momentum=config.pseudo_momentum)
-
-    # Labels tensor for the batch
-    labels_tensor = torch.tensor(labels, device=device)
-
-    # Optimize the pseudo patterns for the current batch
     for _ in range(config.pseudo_iterations):
         optimizer.zero_grad()
-
-        # Forward pass: Compute model outputs for the batch
-        outputs = model(pseudo_patterns)
+        pseudo_pattern_batch = pseudo_pattern_batch.to(device) #############
+        outputs = model(pseudo_pattern_batch)
 
         # Compute loss: maximize activation for each label
-        losses = -outputs[torch.arange(batch_size), labels_tensor]
+        losses = -outputs[torch.arange(len(label_batch)), labels_tensor]
         loss = losses.mean()  # Average loss across the batch
         loss.backward()
-
-        # Update the pseudo patterns
         optimizer.step()
 
     # Detach abd convert to a list of nmpy arrays
-    pseudo_pattern_list = pseudo_patterns.detach().cpu().unbind(0)
-    return pseudo_pattern_list
+    pseudo_pattern_npy = pseudo_pattern_batch.detach().cpu().unbind(0)
+    # print("#######################1", [pseudo for pseudo in pseudo_pattern_npy])
+    # return [pseudo for pseudo in pseudo_pattern_npy]
+    return pseudo_pattern_npy 
 
 
-def generate_pseudo_patterns(
-    config,
-    parameters: Dict[str, Dict[str, torch.Tensor]],
-    model: nn.Module,
-    device: torch.device,
-    label: int = 10,
-    global_params=None,
-) -> Dict[int, Dict[int, torch.Tensor]]:
-    """
-    Generate pseudo patterns for each client.
-    Args:
-        parameters: Client parameters.
-        model: PyTorch model (already on device).
-        device: Device for computation.
-        labels: List of labels.
-    Returns:
-        Dictionary mapping client indices to pseudo patterns by label.
-    """
-    labels = list(range(label))
+# def get_optimized_pseudo_patterns(
+#     config,
+#     parameters: Dict[str, Dict[str, torch.Tensor]],
+#     model: nn.Module,
+#     device: torch.device,
+#     label: int = 10,
+#     global_params=None,
+#     prev_client_pseudo_dict={}, 
+#     prev_server_pseudo_patterns=[],
+# ) -> Dict[int, Dict[int, torch.Tensor]]:
+#     """
+#     Generate pseudo patterns for each client.
+#     Args:
+#         parameters: Client parameters.
+#         model: PyTorch model (already on device).
+#         device: Device for computation.
+#         labels: List of labels.
+#     Returns:
+#         Dictionary mapping client indices to pseudo patterns by label.
+#     """
+#     labels = list(range(label))
 
-    if global_params:
-        model.load_state_dict(copy.deepcopy(global_params), strict=True)
-        pseudo_per_label_global = optimize_single_batch(config, model, labels, device)
+#     if global_params:
+#         init_pseudo = None
+#         if prev_server_pseudo_patterns:
+#             init_pseudo = prev_server_pseudo_patterns
+#         model.load_state_dict(copy.deepcopy(global_params), strict=True)
+#         pseudo_per_label_global = optimize_pseudo_pattern_batch(config, model, labels, device, init_pseudo=init_pseudo)
 
-    client_pseudo_dict = {}
-    # for idx, client_id in enumerate(parameters.keys()):
-    for idx, client_id in enumerate(sorted(parameters.keys())):
-        model.load_state_dict(copy.deepcopy(parameters[client_id]), strict=True)
-        # model.load_state_dict(parameters[client_id])
-        pseudo_per_label = optimize_single_batch(config, model, labels, device)
-        pseudo_per_label_dict = {lab: pseudo for lab, pseudo in enumerate(pseudo_per_label)}
-        client_pseudo_dict[idx] = pseudo_per_label_dict
-    return client_pseudo_dict, pseudo_per_label_global
+#     client_pseudo_dict = {}
+#     # for idx, client_id in enumerate(parameters.keys()):
+#     for idx, client_id in enumerate(sorted(parameters.keys())):
+#         model.load_state_dict(copy.deepcopy(parameters[client_id]), strict=True)
+#         init_pseudo = None
+#         if prev_client_pseudo_dict:
+#             if client_id in prev_client_pseudo_dict:
+#                 init_pseudo = prev_client_pseudo_dict[client_id]
+#                 # print("####################", init_pseudo)
+#             # model.load_state_dict(parameters[client_id])
+#         pseudo_per_label = optimize_pseudo_pattern_batch(config, model, labels, device, init_pseudo=init_pseudo)
+#         pseudo_per_label_dict = {lab: pseudo for lab, pseudo in enumerate(pseudo_per_label)}
+#         client_pseudo_dict[idx] = pseudo_per_label_dict
+#     return client_pseudo_dict, pseudo_per_label_global
 
 
 def calculate_client_client_distance(
@@ -143,10 +123,12 @@ def calculate_client_client_distance(
         # Compute pairwise distances for the current label
         for i in range(num_clients):
             for j in range(i + 1, num_clients):
-                dist = np.linalg.norm(
-                    client_pseudo_dict[i][label_id].cpu().numpy()
-                    - client_pseudo_dict[j][label_id].cpu().numpy()
-                )
+                # dist = np.linalg.norm(
+                #     client_pseudo_dict[i][label_id].cpu().numpy()
+                #     - client_pseudo_dict[j][label_id].cpu().numpy()
+                # )
+                # dist = euclidean_distance(client_pseudo_dict[i][label_id], client_pseudo_dict[j])
+                dist = cosine_distance(client_pseudo_dict[i][label_id], client_pseudo_dict[j][label_id])
                 distances[i, j] = dist
                 distances[j, i] = dist
 
@@ -185,15 +167,92 @@ def calculate_server_client_distance(
 
         # Compute distance for all labels
         for label_id in labels:
-            dist = np.linalg.norm(
-                client_pseudo_dict[i][label_id].cpu().numpy()
-                - server_pseudo_patterns[label_id].cpu().numpy()
-            )
+            # dist = np.linalg.norm(
+            #     client_pseudo_dict[i][label_id].cpu().numpy()
+            #     - server_pseudo_patterns[label_id].cpu().numpy()
+            # )
+            # dist = cosine_distance(client_pseudo_dict[i][label_id], server_pseudo_patterns[label_id])
+            dist = euclidean_distance(client_pseudo_dict[i][label_id], server_pseudo_patterns[label_id])
             total_distance += dist
 
-        server_client_distances[i] = total_distance  ####### normalize this by dividing by the client sample count
+        server_client_distances[i] = total_distance  # ###### normalize this by dividing by the client sample count
 
     return server_client_distances
+
+
+# def generate_pseudo_all_label(config, model, state_dict, num_classes, device, seed, init_pseudo=None):
+#     pseudos_patterns = []    
+#     for lab_id in range(num_classes):
+#         model.load_state_dict(copy.deepcopy(state_dict), strict=True)
+#         if init_pseudo:
+#             single_pseudo = [init_pseudo[lab_id]]
+#             single_pseudo = torch.stack(single_pseudo)
+#         else:
+#             single_pseudo = generate_seeded_pseudo_patterns(device=device, seed=seed)
+#         single_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_pseudo)
+#         pseudos_patterns.extend(single_pseudo_optimized)
+#     return pseudos_patterns
+
+
+def generate_pseudo_all_label(config, model, state_dict, num_classes, device, seed, init_pseudo=None):
+
+    x_npy = np.load("/home/stijani/projects/dataset/mnist-fashion/test_features.npy")
+    y_npy = np.load("/home/stijani/projects/dataset/mnist-fashion/test_labels.npy")
+
+    sampled_features = []
+    sampled_labels = []
+
+    for cls in range(num_classes):
+        class_indices = np.where(y_npy == cls)[0]
+        random_idx = np.random.choice(class_indices, size=1, replace=False)[0]
+
+        # Append the feature and label for this index
+        sampled_features.append(x_npy[random_idx])
+        sampled_labels.append(y_npy[random_idx])
+
+    pseudos_patterns = []    
+    for lab_id, feature in zip(sampled_labels, sampled_features):
+        model.load_state_dict(copy.deepcopy(state_dict), strict=True)
+        if init_pseudo:
+            single_pseudo = [init_pseudo[lab_id]]
+            single_pseudo = torch.stack(single_pseudo)
+        else:
+            feature = feature / 255.0
+            feature = feature.transpose(2, 0, 1)
+            feature = torch.from_numpy(feature)
+            single_pseudo = torch.stack([feature])
+            single_pseudo = single_pseudo.to(torch.float32)
+            single_pseudo.to(device)
+        single_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_pseudo)
+        pseudos_patterns.extend(single_pseudo_optimized)
+    return pseudos_patterns
+
+
+#######################################
+# UNCOMMENT BELOW TO USE PSEUDO PATTERNS
+#######################################
+def generate_pseudo_all_label_(config, model, state_dict, num_classes, device, seed, init_pseudo=None):
+    pseudos_patterns = []    
+    for lab_id in range(num_classes):
+        model.load_state_dict(copy.deepcopy(state_dict), strict=True)
+        if init_pseudo:
+            single_label_pseudo = [init_pseudo[lab_id]]
+            single_label_pseudo = torch.stack(single_label_pseudo)
+            single_label_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_label_pseudo)
+        else:
+            # average multiple pseudo per label
+            single_label_pseudo = generate_seeded_pseudo_patterns(batch_size=1, device=device, seed=seed)  # batch_size defaults to 1
+            # generate pseudo for this label
+            single_label_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_label_pseudo)
+            ##################################
+            # below line makes sense when multiple
+            # Pseudo patterns are generated per label and then averaged
+            # in this case we set the batch_size above to a number n > 1
+            # and set use [lab_id]*n rather than [lab_id] in the line above
+            ##################################
+            single_label_pseudo_optimized = torch.mean(torch.stack(single_label_pseudo_optimized), dim=0)
+        pseudos_patterns.extend(single_label_pseudo_optimized)
+    return pseudos_patterns
 
 
 def krum_pseudo(
@@ -202,46 +261,61 @@ def krum_pseudo(
     client_sizes: List[int],
     model: nn.Module,
     device: torch.device,
+    prev_client_pseudo_dict,
+    prev_server_pseudo_patterns,
     candidate_num: int = 6,
     num_classes: int = 10,
     num_clients: int = 10,
+    seed: int = 42,
+    # seed: int = None,
+    use_prev_pseudos: bool = False,  # @TODO: move to config
+    client2server: bool = False,
 ) -> Dict[str, torch.Tensor]:
     """
     Krum: Select the most representative client.
     """
+    # map client id to ints
     client_id_to_int = {i: client_id for i, client_id in enumerate(sorted(parameters.keys()))}
 
-    global_params = copy.deepcopy(model.state_dict())
-    # Generate pseudo patterns
-    client_pseudo_dict, server_pseudo_patterns = generate_pseudo_patterns(config, parameters, model, device, num_classes, global_params)
+    if not use_prev_pseudos:
+        prev_client_pseudo_dict = {}
+        prev_server_pseudo_patterns = None
+
+    # get server pseudo
+    server_state_dict = copy.deepcopy(model.state_dict())
+    init_pseudo = prev_server_pseudo_patterns
+    server_pseudos = generate_pseudo_all_label(config, model, server_state_dict, num_classes, device, seed, init_pseudo=init_pseudo)
+
+    # get client pseudos
+    client_pseudo_dict = {}
+    for client_idx, client_id in client_id_to_int.items():
+        client_state_dict = copy.deepcopy(parameters[client_id])
+        init_pseudo = prev_client_pseudo_dict.get(client_id, None)
+        client_pseudos = generate_pseudo_all_label(config, model, client_state_dict, num_classes, device, seed, init_pseudo=init_pseudo)
+        client_pseudo_dict[client_idx] = client_pseudos
 
     # Calculate total scores
-    # scores_client2client = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
-    scores_client2server = calculate_server_client_distance(client_pseudo_dict, server_pseudo_patterns, num_clients=num_clients, num_classes=num_classes)
 
-    ######################################################
-    # print("#############1", client_sizes)
-    # print("#############2", list(parameters.keys()))
-    # raise ValueError
-    # # normalize = True
-    # # if normalize:
-    # #     scores_client2client = 
-    # #     scores_client2client
-    ######################################################
+    if client2server:
+        final_scores = calculate_server_client_distance(client_pseudo_dict, server_pseudos, num_clients=num_clients, num_classes=num_classes)
+    else:
+        final_scores = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
 
-    alpha = 0.5
+    # alpha = 0.5
     # final_scores = scores_client2client + alpha * scores_client2server  # TODO: 1. make optional to add scores_client2server 2. make alpha an argument
-    final_scores = scores_client2server
-    # final_scores = scores_client2client
-    # final_scores = 0.5 * scores_client2client + 0.5 * scores_client2server
 
     # Select the client with the lowest total score
     best_client_index = np.argmin(final_scores)
     best_client_id = client_id_to_int[best_client_index]
-    best_client_id = list(parameters.keys())[best_client_index]
 
-    return parameters[best_client_id]
-    ###### return parameters[best_client_id] # fix
+    print("##################1", best_client_index, best_client_id)
+    print("##################2", final_scores)
+
+
+    # map client pseudo to client id
+    client_id_vs_pseudo = {client_id: client_pseudo_dict[idx] for idx, client_id in client_id_to_int.items()}
+
+    return parameters[best_client_id], client_id_vs_pseudo, server_pseudos
 
 
 def multiKrum_pseudo(
@@ -250,44 +324,71 @@ def multiKrum_pseudo(
     client_sizes: List[int],
     model: nn.Module,
     device: torch.device,
-    candidate_num: int = 7,
+    prev_client_pseudo_dict,
+    prev_server_pseudo_patterns,
+    candidate_num: int = 6,
     num_classes: int = 10,
     num_selected: int = 5,
     num_clients: int = 10,
-) -> List[Dict[str, torch.Tensor]]:
+    # seed: int = None,
+    seed: int = 42,
+    use_prev_pseudos: bool = False,  # @TODO: move to config
+    client2server: bool = True,
+) -> Dict[str, torch.Tensor]:
     """
-    Multi-Krum: Select multiple representative clients.
+    Krum: Select the most representative client.
     """
-    # labels = list(range(10))
+    # map client id to ints
+    client_id_to_int = {i: client_id for i, client_id in enumerate(sorted(parameters.keys()))}
 
-    global_params = copy.deepcopy(model.state_dict())
+    if not use_prev_pseudos:
+        prev_client_pseudo_dict = {}
+        prev_server_pseudo_patterns = None
 
-    # Generate pseudo patterns
-    client_pseudo_dict, server_pseudo_patterns = generate_pseudo_patterns(config, parameters, model, device, num_classes, global_params)
+    # get server pseudo
+    server_state_dict = copy.deepcopy(model.state_dict())
+    init_pseudo = prev_server_pseudo_patterns
+    server_pseudos = generate_pseudo_all_label(config, model, server_state_dict, num_classes, device, seed, init_pseudo=init_pseudo)
+
+    # get client pseudos
+    client_pseudo_dict = {}
+    for client_idx, client_id in client_id_to_int.items():
+        client_state_dict = copy.deepcopy(parameters[client_id])
+        init_pseudo = prev_client_pseudo_dict.get(client_id, None)
+        client_pseudos = generate_pseudo_all_label(config, model, client_state_dict, num_classes, device, seed, init_pseudo=init_pseudo)
+        client_pseudo_dict[client_idx] = client_pseudos
 
     # Calculate total scores
-    # scores_client2client = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
-    scores_client2server = calculate_server_client_distance(client_pseudo_dict, server_pseudo_patterns, num_clients=num_clients, num_classes=num_classes)
 
-    alpha = 1
-    # final_scores = scores_client2client + alpha * scores_client2server
-    # final_scores = scores_client2client
-    final_scores = scores_client2server
+    if client2server:
+        final_scores = calculate_server_client_distance(client_pseudo_dict, server_pseudos, num_clients=num_clients, num_classes=num_classes)
+    else:
+        final_scores = calculate_client_client_distance(client_pseudo_dict, candidate_num=candidate_num, num_clients=num_clients, num_classes=num_classes)
 
-    # Select the indices of the `num_selected` clients with the lowest total scores
-    selected_indices = np.argsort(final_scores)[:num_selected]
+    # alpha = 0.5
+    # final_scores = scores_client2client + alpha * scores_client2server  # TODO: 1. make optional to add scores_client2server 2. make alpha an argument
 
-    # Map selected indices back to client IDs and parameters
-    candidate_parameters = [
-        parameters[list(parameters.keys())[idx]] for idx in selected_indices
-    ]
+    # Select the client with the lowest total score
+    # best_client_index = np.argmin(final_scores)
+    # best_client_id = client_id_to_int[best_client_index]
+
+    # selected_indices = np.argsort(final_scores)[:num_selected]
+    best_client_idxs = [idx for idx, val in sorted(enumerate(final_scores), key=lambda x: x[1])[:num_selected]]
+    best_client_ids = [client_id_to_int[client_idx] for client_idx in best_client_idxs]
+    best_parameters = [parameters[best_client_id] for best_client_id in best_client_ids]
+
+    print("##################1", best_client_idxs)
+    print("##################1", final_scores)
 
     # average the candidate params
     new_params = {}
-    for name in candidate_parameters[0].keys():
-        new_params[name] = sum([param[name].data for param in candidate_parameters]) / len(candidate_parameters)
+    for name in parameters[best_client_ids[0]].keys():
+        new_params[name] = sum([param[name].data for param in best_parameters]) / len(best_parameters)
 
-    return new_params
+    # map client pseudo to client id
+    client_id_vs_pseudo = {client_id: client_pseudo_dict[idx] for idx, client_id in client_id_to_int.items()}
+
+    return new_params, client_id_vs_pseudo, server_pseudos
 
 
 if __name__ == "__main__":

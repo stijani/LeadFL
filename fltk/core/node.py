@@ -167,7 +167,7 @@ class Node(abc.ABC):
             # self.offloaded_net.load_state_dict(copy.deepcopy(new_params), strict=True)
         else:
             ################################### Saheed
-            # TODO: find out why this was retunning tuple rather dict
+            # TODO: find out why this was retunning tuple rather dict with bulyan
             if isinstance(new_params, tuple):
                 new_params = new_params[0]
             ##################################

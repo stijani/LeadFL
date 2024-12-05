@@ -62,7 +62,7 @@ class Config:
     scheduler_step_size: int = 50
     scheduler_gamma: float = 0.5
     min_lr: float = 1e-10
-    rng_seed = 0
+    rng_seed: int = 5  # 0  #########################
     cluster: bool = False
     # clients_selection
     selection_method: str = "random"
