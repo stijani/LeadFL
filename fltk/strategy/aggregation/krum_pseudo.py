@@ -231,28 +231,28 @@ def generate_pseudo_all_label(config, model, state_dict, num_classes, device, se
 #######################################
 # UNCOMMENT BELOW TO USE PSEUDO PATTERNS
 #######################################
-def generate_pseudo_all_label_(config, model, state_dict, num_classes, device, seed, init_pseudo=None):
-    pseudos_patterns = []    
-    for lab_id in range(num_classes):
-        model.load_state_dict(copy.deepcopy(state_dict), strict=True)
-        if init_pseudo:
-            single_label_pseudo = [init_pseudo[lab_id]]
-            single_label_pseudo = torch.stack(single_label_pseudo)
-            single_label_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_label_pseudo)
-        else:
-            # average multiple pseudo per label
-            single_label_pseudo = generate_seeded_pseudo_patterns(batch_size=1, device=device, seed=seed)  # batch_size defaults to 1
-            # generate pseudo for this label
-            single_label_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_label_pseudo)
-            ##################################
-            # below line makes sense when multiple
-            # Pseudo patterns are generated per label and then averaged
-            # in this case we set the batch_size above to a number n > 1
-            # and set use [lab_id]*n rather than [lab_id] in the line above
-            ##################################
-            single_label_pseudo_optimized = torch.mean(torch.stack(single_label_pseudo_optimized), dim=0)
-        pseudos_patterns.extend(single_label_pseudo_optimized)
-    return pseudos_patterns
+# def generate_pseudo_all_label(config, model, state_dict, num_classes, device, seed, init_pseudo=None):
+#     pseudos_patterns = []    
+#     for lab_id in range(num_classes):
+#         model.load_state_dict(copy.deepcopy(state_dict), strict=True)
+#         if init_pseudo:
+#             single_label_pseudo = [init_pseudo[lab_id]]
+#             single_label_pseudo = torch.stack(single_label_pseudo)
+#             single_label_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_label_pseudo)
+#         else:
+#             # average multiple pseudo per label
+#             single_label_pseudo = generate_seeded_pseudo_patterns(batch_size=1, device=device, seed=seed)  # batch_size defaults to 1
+#             # generate pseudo for this label
+#             single_label_pseudo_optimized = optimize_pseudo_pattern_batch(config, model, [lab_id], device, single_label_pseudo)
+#             ##################################
+#             # below line makes sense when multiple
+#             # Pseudo patterns are generated per label and then averaged
+#             # in this case we set the batch_size above to a number n > 1
+#             # and set use [lab_id]*n rather than [lab_id] in the line above
+#             ##################################
+#             single_label_pseudo_optimized = torch.mean(torch.stack(single_label_pseudo_optimized), dim=0)
+#         pseudos_patterns.extend(single_label_pseudo_optimized)
+#     return pseudos_patterns
 
 
 def krum_pseudo(
@@ -269,7 +269,7 @@ def krum_pseudo(
     seed: int = 42,
     # seed: int = None,
     use_prev_pseudos: bool = False,  # @TODO: move to config
-    client2server: bool = False,
+    client2server: bool = True,
 ) -> Dict[str, torch.Tensor]:
     """
     Krum: Select the most representative client.
