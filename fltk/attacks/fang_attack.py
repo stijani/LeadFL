@@ -3,7 +3,7 @@ import numpy as np
 
 from fltk.attacks import lie_nn_parameters
 from fltk.attacks.my_lie_attack import lie_attack
-from fltk.strategy import median, multiKrum, krum, fed_avg, bulyan, krum_pseudo, multiKrum_pseudo
+from fltk.strategy import median, multiKrum, krum, fed_avg, bulyan, krum_pseudo, multiKrum_pseudo, krum_logits, multiKrum_logits
 from fltk.strategy.aggregation.trmean import trmean
 
 

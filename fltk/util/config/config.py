@@ -97,7 +97,7 @@ class Config:
     distributed: bool = True
     single_machine: bool = False
     # Enum
-    aggregation: Aggregations = Aggregations.fedavg
+    aggregation: Aggregations = Aggregations.fed_avg
     # Enum
     dataset_name: Dataset = Dataset.mnist
     # Enum
@@ -129,6 +129,12 @@ class Config:
     pseudo_momentum: float = 0.0
     pseudo_iterations: int = 0
     run_prefix: str = ""
+    num_label_classes: int = 10
+    num_pseudo_patterns_per_label: int = 10
+    image_shape = [1, 28, 28]  # TODO: fix, the value from yaml is not getting used
+    num_clients_to_select: int = 5
+    use_server_alignment: bool = True
+    use_real_images: bool = False
     #######################
     def update_rng_seed(self):
         torch.manual_seed(self.rng_seed)

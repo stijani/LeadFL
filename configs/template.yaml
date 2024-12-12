@@ -1,9 +1,9 @@
-aggregation: multiKrum_pseudo
-attack_client: TargetedAttack # Backdoor
+aggregation: multiKrum_logits
+attack_client: Backdoor # TargetedAttack
 attack_epochs: 10
 attack_server: null
 backdoor_config: configs/backdoor_tasks/mnist_params_pattern.yaml
-backdoor_type: 1-pixel # 9-pixel
+backdoor_type: 9-pixel # 1-pixel
 batch_size: 32
 clients_per_round: 10
 cluster: false
@@ -16,7 +16,7 @@ data_sampler_args:
 dataset_name: fashion-mnist
 defense: null # LeadFL
 epochs: 10 # 10
-experiment_prefix: testing-with-targeted-attack
+experiment_prefix: "CONSISTENT"
 run_prefix: ""
 mal_boost: 1
 mal_clients_per_round: 2
@@ -27,15 +27,24 @@ offload_stategy: deadline
 output_location: output
 pert_strength: 0.2
 regular_weight: 0.4
-rounds: 80
+rounds: 100
 selection_method: consistent # (random: for this method, mal_clients_per_round doesn't have any effect, for num_clients/num_mal_clients/clients_per_round=100/25/10, there are on average 2.5 malicious selected
 single_machine: true
 tensor_board_active: true
 use_wandb: true
 wait_for_clients: true
 ############################
+num_label_classes: 10
 # for any new param added here, it must also be add to ./fltk/util/config/config.py
-pseudo_lr: 0.01 # best 0.01
+pseudo_lr: 0.9 # best 0.01
 pseudo_momentum: 0.99 # best 0.99
-pseudo_iterations: 100 # best 100
+pseudo_iterations: 1000 # best 1000
+num_pseudo_patterns_per_label: 10
+image_shape: 
+ - 1
+ - 28
+ - 28
+num_clients_to_select: 8 # 5
+use_server_alignment: false
+use_real_images: false
 #############################

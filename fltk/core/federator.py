@@ -718,19 +718,22 @@ class Federator(Node):
                 # num of candidates in mal_name
                 self.cluster_acc, self.cluster_recall, self.cluster_precision = (
                     calculate_cluster_metrics(
-                        self.stored_index[-self.config.clients_per_round :],
+                        self.stored_index[-self.config.clients_per_round:],
                         mal_name,
                         candidates,
                     )
                 )
         
         # select aggregator and compute updated weights
-        if self.config.aggregation.value in ["krum_pseudo", "multiKrum_pseudo"]:
-            # updated_model = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model
-            updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, self.client_pseudo_dict, self.server_pseudo_patterns)
-            # updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, None, None)
-            self.client_pseudo_dict = client_pseudo_dict
-            self.server_pseudo_patterns = server_pseudo_patterns
+        # if self.config.aggregation.value in ["krum_pseudo", "multiKrum_pseudo"]:
+        #     # updated_model = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device) ##### self.net here is the previous model
+        #     updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, self.client_pseudo_dict, self.server_pseudo_patterns)
+        #     # updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, None, None)
+        #     self.client_pseudo_dict = client_pseudo_dict
+        #     self.server_pseudo_patterns = server_pseudo_patterns
+        if self.config.aggregation.value in ["krum_logits", "multiKrum_logits"]:
+            # num_clients_to_select = self.config.num_clients_to_select
+            updated_model = self.aggregation_method(com_round_id, self.config, client_sizes, client_weights, self.net, self.device)
         elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
         else:

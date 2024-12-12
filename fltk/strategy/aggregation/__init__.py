@@ -5,6 +5,8 @@ from  .median import median
 from .trmean import trimmed_mean
 from .bulyan import bulyan
 from .krum_pseudo import krum_pseudo, multiKrum_pseudo
+from .krum_logits import krum_logits
+from .multiKrum_logits import multiKrum_logits
 from .krum import krum
 from .multiKrum import multiKrum
 
@@ -19,7 +21,7 @@ def get_aggregation(name: Aggregations):
     """
     enum_type = Aggregations(name.value)
     aggregations_dict = {
-            Aggregations.fedavg: fed_avg,
+            Aggregations.fed_avg: fed_avg,
             Aggregations.median: median,
             Aggregations.trmean: trimmed_mean,
             Aggregations.sum: lambda x: x,
@@ -29,6 +31,8 @@ def get_aggregation(name: Aggregations):
             Aggregations.multiKrum: multiKrum,
             Aggregations.krum_pseudo: krum_pseudo,
             Aggregations.multiKrum_pseudo: multiKrum_pseudo,
+            Aggregations.krum_logits: krum_logits,
+            Aggregations.multiKrum_logits: multiKrum_logits,
         }
 
     return aggregations_dict[enum_type]
