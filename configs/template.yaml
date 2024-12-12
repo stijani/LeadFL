@@ -44,7 +44,7 @@ image_shape:
  - 1
  - 28
  - 28
-num_clients_to_select: 8 # 5
-use_server_alignment: false
+num_clients_to_select: 5 # no longer need, now calculated as num_client_per_round - mal_clients_per_roun
+use_server_alignment: false  # best setting is client to client alignment
 use_real_images: false
 #############################

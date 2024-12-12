@@ -733,14 +733,18 @@ class Federator(Node):
         #     self.server_pseudo_patterns = server_pseudo_patterns
         if self.config.aggregation.value in ["krum_logits", "multiKrum_logits"]:
             # num_clients_to_select = self.config.num_clients_to_select
-            updated_model = self.aggregation_method(com_round_id, self.config, client_sizes, client_weights, self.net, self.device)
+            updated_model, selected_client_ids = self.aggregation_method(com_round_id, self.config, client_sizes, client_weights, self.net, self.device)
+            true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]
+            selected_mal_clients = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
+            # selected_mal_clients = list(set(item.lower() for item in self.true_mal) & set(item.lower() for item in selected_client_ids))
+            # print(f"##################", true_mal_ids, selected_client_ids)
         elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
         else:
             updated_model = self.aggregation_method(client_weights, client_sizes)
 
         if self.config.cluster is False or len(candidates) > 0:
-            self.update_nn_parameters(updated_model)  ########### global model (self.net) is update here, before this function call, it was always the previoous round's global model
+            self.update_nn_parameters(updated_model)  # ########## global model (self.net) is update here, before this function call, it was always the previoous round's global model
         test_accuracy, test_loss, conf_mat = self.test(self.net)
         mal_accuracy, mal_loss, mal_confidence = self.mal_test(self.net)
         if self.config.attack_client == "Backdoor":
@@ -857,6 +861,7 @@ class Federator(Node):
                     "Federator/Accuracy": test_accuracy,
                     "Federator/Loss": test_loss,
                     "Federator/Malicious number this round": mal_this_round,
+                    "Federator/Number of Malicious selected for aggregation": len(selected_mal_clients),
                 },
                 step=com_round_id,
             )

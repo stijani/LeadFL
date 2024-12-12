@@ -15,6 +15,7 @@ def multiKrum_logits(
     model: torch.nn.Module,
     device: torch.device,
 ) -> List[int]:
-    num_clients_to_select = config.num_clients_to_select
-    aggr_params = krum_logits(com_round, config, client_sizes, parameters, model, device, num_clients_to_select)
-    return aggr_params
+    # num_clients_to_select = config.num_clients_to_select
+    num_clients_to_select = config.clients_per_round - config.mal_clients_per_round
+    aggr_params, selected_client_ids = krum_logits(com_round, config, client_sizes, parameters, model, device, num_clients_to_select)
+    return aggr_params, selected_client_ids
