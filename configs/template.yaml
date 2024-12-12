@@ -16,7 +16,7 @@ data_sampler_args:
 dataset_name: fashion-mnist
 defense: null # LeadFL
 epochs: 10 # 10
-experiment_prefix: "CONSISTENT"
+experiment_prefix: "BENCHMARK-CONSISTENT-2-MAL-CLIENTS"
 run_prefix: ""
 mal_boost: 1
 mal_clients_per_round: 2
