@@ -16,8 +16,8 @@ data_sampler_args:
 dataset_name: cifar10
 defense: null # LeadFL
 epochs: 10 # 10
-experiment_prefix: TESTING-CIFAR10 #TESTING_BULYAN 
-run_prefix: ""
+experiment_prefix: MODIFIED-LOGIC-TESTING-CIFAR10 #TESTING_BULYAN 
+run_prefix: "s2c"
 mal_boost: 1
 mal_clients_per_round: 2
 net_name: Cifar10CNN
@@ -36,8 +36,8 @@ wait_for_clients: true
 ############################
 num_label_classes: 10
 # for any new param added here, it must also be add to ./fltk/util/config/config.py
-pseudo_lr: 0.9 # best 0.01
-pseudo_momentum: 0.99 # best 0.99
+pseudo_lr: 0.1 # best 0.01
+pseudo_momentum: 0.9 # best 0.99
 pseudo_iterations: 1000 # best 1000
 num_pseudo_patterns_per_label: 10
 pseudo_real_dataset_name: cifar10  # use real dataset instaed of pseudo patterns
@@ -45,6 +45,6 @@ input_width: 32
 input_height: 32
 input_channels: 3
 num_clients_to_select: 5 # no longer need, now calculated as num_client_per_round - mal_clients_per_roun
-use_server_alignment: false  # best setting is client to client alignment
+use_server_alignment: true  # best setting is client to client alignment
 use_real_images: false
 #############################

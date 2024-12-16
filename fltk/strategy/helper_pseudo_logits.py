@@ -4,6 +4,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 from scipy.spatial.distance import cosine
 from types import SimpleNamespace
+from scipy.spatial.distance import cosine
 
 
 def normalize_client_sample_quantities(client_sizes):
@@ -149,7 +150,7 @@ def optimize_pseudo_patterns(pseudo_patterns, labels, model, device, iterations,
     logits = model(pseudo_patterns).detach().cpu()
     logits_dict = {label: logits[labels == label].mean(dim=0) for label in range(num_classes)}
 
-    return logits_dict
+    return logits_dict, pseudo_patterns
 
 
 def apply_pseudo_patterns_to_client(
