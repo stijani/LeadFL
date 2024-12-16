@@ -6,11 +6,21 @@ from scipy.spatial.distance import cosine
 from types import SimpleNamespace
 
 
+def normalize_client_sample_quantities(client_sizes):
+    # min_val = min(client_sizes.values())
+    max_val = max(client_sizes.values())
+
+    # Normalize the values
+    # normalized_data = {k: (v - min_val) / (max_val - min_val) for k, v in client_sizes.items()}
+    normalized_data = {k: v / max_val for k, v in client_sizes.items()}
+    return normalized_data
+
 def generate_real_samples(
     num_classes,
     num_pseudo_patterns,
     input_shape,
     device,
+    dataset_name,
     seed: int = 42,
 ):
     """
@@ -35,8 +45,11 @@ def generate_real_samples(
         torch.manual_seed(seed)
 
     # Load the dataset
-    x_npy = np.load("/home/stijani/projects/dataset/mnist-fashion/test_features.npy")
-    y_npy = np.load("/home/stijani/projects/dataset/mnist-fashion/test_labels.npy")
+    # x_npy = np.load("/home/stijani/projects/dataset/fashion-mnist/test_features.npy")
+    # y_npy = np.load("/home/stijani/projects/dataset/fashion-mnist/test_labels.npy")
+
+    x_npy = np.load(f"/home/stijani/projects/dataset/{dataset_name}/test_features.npy")
+    y_npy = np.load(f"/home/stijani/projects/dataset/{dataset_name}/test_labels.npy")
 
     sampled_features = []
     sampled_labels = []
@@ -53,6 +66,9 @@ def generate_real_samples(
     # Convert sampled features and labels to tensors
     pseudo_patterns = torch.tensor(sampled_features, dtype=torch.float32).view(-1, *input_shape).to(device)
     labels = torch.tensor(sampled_labels, dtype=torch.long).to(device)
+    # print("########################1111", pseudo_patterns) not normalized up tp this point
+    pseudo_patterns = pseudo_patterns / 255.0
+    # print("########################1111", pseudo_patterns)
 
     return pseudo_patterns, labels
 
@@ -115,6 +131,7 @@ def optimize_pseudo_patterns(pseudo_patterns, labels, model, device, iterations,
         pseudo_patterns: Optimized pseudo patterns as a tensor.
         logits: Dictionary containing logits for each class.
     """
+    
     model = model.to(device)
     model.eval()
 
@@ -179,7 +196,7 @@ def apply_pseudo_patterns_to_client(
     return client_logits
 
 
-def server_to_client_alignment(global_logits_dict, client_logits_dict, device, num_byzantine):
+def server_to_client_alignment(global_logits_dict, client_logits_dict, device):
     dissimilarity_scores = {}
     for client_id, client_logits in client_logits_dict.items():
         distances = []
@@ -197,7 +214,7 @@ def server_to_client_alignment(global_logits_dict, client_logits_dict, device, n
     return dissimilarity_scores
 
 
-def client_to_client_alignment(client_logits_dict, device, num_byzantine):
+def client_to_client_alignment(client_logits_dict, device):
     dissimilarity_scores = {}
     client_ids = list(client_logits_dict.keys())
     for client_id in client_ids:

@@ -15,3 +15,4 @@ class Aggregations(Enum):
     multiKrum_pseudo = "multiKrum_pseudo"
     krum_logits = "krum_logits"
     multiKrum_logits = "multiKrum_logits"
+    bulyan_logits = "bulyan_logits"

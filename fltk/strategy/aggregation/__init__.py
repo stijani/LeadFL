@@ -6,6 +6,7 @@ from .trmean import trimmed_mean
 from .bulyan import bulyan
 from .krum_pseudo import krum_pseudo, multiKrum_pseudo
 from .krum_logits import krum_logits
+from .bulyan_logits import bulyan_logits
 from .multiKrum_logits import multiKrum_logits
 from .krum import krum
 from .multiKrum import multiKrum
@@ -33,6 +34,7 @@ def get_aggregation(name: Aggregations):
             Aggregations.multiKrum_pseudo: multiKrum_pseudo,
             Aggregations.krum_logits: krum_logits,
             Aggregations.multiKrum_logits: multiKrum_logits,
+            Aggregations.bulyan_logits: bulyan_logits,
         }
 
     return aggregations_dict[enum_type]

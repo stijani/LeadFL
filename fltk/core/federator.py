@@ -731,15 +731,30 @@ class Federator(Node):
         #     # updated_model, client_pseudo_dict, server_pseudo_patterns = self.aggregation_method(self.config, client_weights, client_sizes, self.net, self.device, None, None)
         #     self.client_pseudo_dict = client_pseudo_dict
         #     self.server_pseudo_patterns = server_pseudo_patterns
+        selected_mal_clients_by_aggr = []  # TODO: compute this value for other aggregators
         if self.config.aggregation.value in ["krum_logits", "multiKrum_logits"]:
             # num_clients_to_select = self.config.num_clients_to_select
             updated_model, selected_client_ids = self.aggregation_method(com_round_id, self.config, client_sizes, client_weights, self.net, self.device)
             true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]
-            selected_mal_clients = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
+            selected_mal_clients_by_aggr = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
             # selected_mal_clients = list(set(item.lower() for item in self.true_mal) & set(item.lower() for item in selected_client_ids))
             # print(f"##################", true_mal_ids, selected_client_ids)
+
+        elif self.config.aggregation.value in ["bulyan"]:
+            updated_model, multiKrum_stage_selected_client_ids = self.aggregation_method(self.config, client_weights, client_sizes)
+            true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]
+            selected_client_ids = multiKrum_stage_selected_client_ids  # this is just based on the multiKrum stage client selection - bulyan aggregates based on layers
+            selected_mal_clients_by_aggr = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
+        
+        elif self.config.aggregation.value in ["bulyan_logits"]:
+            updated_model, multiKrum_stage_selected_client_ids = self.aggregation_method(com_round_id, self.config, client_weights, client_sizes, self.net, self.device)
+            true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]
+            selected_client_ids = multiKrum_stage_selected_client_ids  # this is just based on the multiKrum stage client selection - bulyan aggregates based on layers
+            selected_mal_clients_by_aggr = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
+        
         elif self.config.aggregation.value == "trmean":
             updated_model = self.aggregation_method(client_weights, client_sizes, self.config.tm_beta)
+
         else:
             updated_model = self.aggregation_method(client_weights, client_sizes)
 
@@ -861,7 +876,7 @@ class Federator(Node):
                     "Federator/Accuracy": test_accuracy,
                     "Federator/Loss": test_loss,
                     "Federator/Malicious number this round": mal_this_round,
-                    "Federator/Number of Malicious selected for aggregation": len(selected_mal_clients),
+                    "Federator/Number of Malicious selected for aggregation": len(selected_mal_clients_by_aggr),
                 },
                 step=com_round_id,
             )

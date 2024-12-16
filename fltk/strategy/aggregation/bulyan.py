@@ -5,8 +5,85 @@ import numpy as np
 import torch
 
 
+def bulyan(config, parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
+    """
+    Implements the Bulyan aggregation strategy for robust federated learning.
+
+    :param parameters: Dictionary of model parameters with client indices as keys.
+                       Each value is a dictionary of parameter tensors.
+    :param sizes: Dictionary mapping client indices to their respective data sizes.
+    :return: Aggregated model parameters as a dictionary of tensors.
+    """
+    # for the multiKrum stage
+    num_clients_to_select = config.clients_per_round - config.mal_clients_per_round
+    multi_krum = num_clients_to_select  # Number of clients to consider after Krum selection
+
+    candidate_num = 7  # Number of closest clients to consider for distance sum
+    f = 3  # assuming and average if 3 mal clients per round
+    beta = max(3, (config.clients_per_round - 2 * f) // 2)  # Define beta using the formula
+
+    # Step 1: Compute pairwise distances
+    distances = {}
+    for client_id, parameter in parameters.items():
+        distances[client_id] = []
+        for _client_id, _parameter in parameters.items():
+            if client_id != _client_id:
+                distance = sum(
+                    torch.norm((parameter[name] - _parameter[name]).float())**2
+                    for name in parameter.keys()
+                )
+                distances[client_id].append(distance)
+
+    # Step 2: Select top candidates using Krum
+    krum_scores = {}
+    for client_id, dist_list in distances.items():
+        sorted_distances = sorted(dist_list)[:candidate_num]
+        krum_scores[client_id] = sum(sorted_distances)
+
+    # Sort clients by Krum scores and select the top `multi_krum`
+    selected_client_ids = sorted(krum_scores, key=krum_scores.get)[:multi_krum]
+    selected_params = [parameters[client_id] for client_id in selected_client_ids]
+
+    # Step 3: Compute median for each parameter across selected clients
+    medians = {}
+    for name in selected_params[0].keys():
+        stacked_tensors = torch.stack([param[name] for param in selected_params])
+        medians[name] = torch.median(stacked_tensors, dim=0).values
+
+    # Step 4: Average beta closest parameters to the median
+    aggregated_params = {}
+    count_tracking_layers = 0
+    for name in selected_params[0].keys():
+        ###################################
+        # Skip non-learnable parameters
+        # print("##############", name)
+        # raise ValueError
+        if "num_batches_tracked" in name:
+            aggregated_params[name] = selected_params[0][name]  # Copy from any client
+            # print("##############1", name, selected_params[0][name])
+            # print("##############-1", name, selected_params[0][name])
+            count_tracking_layers += 1
+            continue
+        ###################################
+        # Compute distances of each candidate's layer parameter from the median
+        median = medians[name]
+        distances_to_median = [
+            torch.norm((param[name] - median).float())**2 for param in selected_params
+        ]
+
+        # Select beta closest parameters to the median
+        closest_indices = torch.argsort(torch.tensor(distances_to_median))[:beta]
+        closest_tensors = torch.stack([selected_params[i][name] for i in closest_indices])
+
+        # Average the beta closest parameters for this layer
+        # print("#################", selected_params[closest_indices[0]])
+        aggregated_params[name] = torch.mean(closest_tensors, dim=0)
+        # print("##############", count_tracking_layers)
+    return aggregated_params, selected_client_ids
+
+
 # def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
-def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], useless=None) -> Dict[str, torch.Tensor]:
+def bulyan_original(parameters: Dict[str, Dict[str, torch.Tensor]], useless=None) -> Dict[str, torch.Tensor]:
     """
     bulyan passed parameters.
 

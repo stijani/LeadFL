@@ -131,10 +131,14 @@ class Config:
     run_prefix: str = ""
     num_label_classes: int = 10
     num_pseudo_patterns_per_label: int = 10
-    image_shape = [1, 28, 28]  # TODO: fix, the value from yaml is not getting used
+    # image_shape = [1, 28, 28]  # TODO: fix, the value from yaml is not getting used
     num_clients_to_select: int = 5
     use_server_alignment: bool = True
     use_real_images: bool = False
+    input_width: int = 28
+    input_height: int = 28
+    input_channels: int = 1
+    pseudo_real_dataset_name: str = "cifar10"
     #######################
     def update_rng_seed(self):
         torch.manual_seed(self.rng_seed)

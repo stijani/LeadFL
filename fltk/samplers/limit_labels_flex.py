@@ -14,7 +14,6 @@ class LimitLabelsSamplerFlex(DistributedSamplerWrapper):
     def __init__(self, dataset, num_replicas, rank, args=(5, 42)):
         limit, seed = args
         super().__init__(dataset, num_replicas, rank, seed)
-
         labels_per_client = int(np.floor(self.n_labels / self.n_clients))
         remaining_labels = self.n_labels - labels_per_client
         labels = list(range(self.n_labels))  # list of labels to distribute
