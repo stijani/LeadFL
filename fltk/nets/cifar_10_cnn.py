@@ -76,7 +76,7 @@ class Cifar10CNN(torch.nn.Module):
         x = x.view(-1, 128 * 4 * 4)
 
         x = self.fc1(x)
-        #x = self.softmax(self.fc2(x))
+        # x = self.softmax(self.fc2(x))
         x = self.fc2(x)
 
         return x
