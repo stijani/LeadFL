@@ -151,6 +151,7 @@ def optimize_pseudo_patterns(pseudo_patterns, labels, model, device, iterations,
     logits_dict = {label: logits[labels == label].mean(dim=0) for label in range(num_classes)}
 
     return logits_dict, pseudo_patterns
+    # return logits_dict
 
 
 def apply_pseudo_patterns_to_client(
