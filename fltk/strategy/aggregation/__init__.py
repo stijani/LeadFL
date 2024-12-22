@@ -8,6 +8,7 @@ from .krum_pseudo import krum_pseudo, multiKrum_pseudo
 from .krum_logits import krum_logits
 from .bulyan_logits import bulyan_logits
 from .multiKrum_logits import multiKrum_logits
+from .clustering import clustering
 from .krum import krum
 from .multiKrum import multiKrum
 
@@ -35,6 +36,7 @@ def get_aggregation(name: Aggregations):
             Aggregations.krum_logits: krum_logits,
             Aggregations.multiKrum_logits: multiKrum_logits,
             Aggregations.bulyan_logits: bulyan_logits,
+            Aggregations.clustering: clustering,
         }
 
     return aggregations_dict[enum_type]

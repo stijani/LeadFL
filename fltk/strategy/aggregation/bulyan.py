@@ -83,7 +83,7 @@ def bulyan(config, parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[s
 
 
 # def bulyan(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
-def bulyan_original(parameters: Dict[str, Dict[str, torch.Tensor]], useless=None) -> Dict[str, torch.Tensor]:
+def bulyan_incorrect(parameters: Dict[str, Dict[str, torch.Tensor]], useless=None) -> Dict[str, torch.Tensor]:
     """
     bulyan passed parameters.
 

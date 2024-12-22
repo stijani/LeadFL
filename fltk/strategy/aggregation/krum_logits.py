@@ -55,6 +55,7 @@ def krum_logits(
         pseudo_patterns, labels = generate_pseudo_patterns(num_label_classes, num_pseudo_patterns_per_label, image_shape, device)
 
     global_logits_dict, server_optimized_pseudo_patterns = optimize_pseudo_patterns(copy.deepcopy(pseudo_patterns), labels, model, device, iter, lr, momentum)
+    # global_logits_dict, server_optimized_pseudo_patterns = optimize_pseudo_patterns(copy.deepcopy(pseudo_patterns), labels, model, device, iter, lr, momentum, use_softmax=True)
     # global_logits_dict = optimize_pseudo_patterns(copy.deepcopy(pseudo_patterns), labels, model, device, iter, lr, momentum)
 
     client_logits_dict = {}
@@ -65,6 +66,7 @@ def krum_logits(
         # client_logits_dict[client_id] = apply_pseudo_patterns_to_client(client_model, server_optimized_pseudo_patterns, labels, device)
         ###############################
         client_logits, _ = optimize_pseudo_patterns(copy.deepcopy(pseudo_patterns), labels, client_model, device, iter, lr, momentum)
+        # client_logits, _ = optimize_pseudo_patterns(copy.deepcopy(pseudo_patterns), labels, client_model, device, iter, lr, momentum, use_softmax=True)
         client_logits_dict[client_id] = client_logits
         ##############################
 

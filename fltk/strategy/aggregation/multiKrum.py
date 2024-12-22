@@ -5,17 +5,15 @@ import numpy as np
 import torch
 
 
-def multiKrum(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int]) -> Dict[str, torch.Tensor]:
+def multiKrum(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, int], config) -> Dict[str, torch.Tensor]:
     """
     multi krum passed parameters.
 
     :param parameters: nn model named parameters with client index
     :type parameters: list
     """
-
-
-    multi_krum = 5
-    candidate_num = 7
+    multi_krum = config.clients_per_round - config.mal_clients_per_round
+    candidate_num = int(0.7 * config.clients_per_round)
     distances = {}
     tmp_parameters = {}
     pre_distance = []
@@ -39,11 +37,12 @@ def multiKrum(parameters: Dict[str, Dict[str, torch.Tensor]], sizes: Dict[str, i
 
     sorted_distance = dict(sorted(distances.items(), key=lambda item: item[1]))
     candidate_parameters = [tmp_parameters[idx] for idx in sorted_distance.keys()][:multi_krum]
+    selected_client_ids = [idx for idx in sorted_distance.keys()][:multi_krum]
     new_params = {}
     for name in candidate_parameters[0].keys():
         new_params[name] = sum([param[name].data for param in candidate_parameters]) / len(candidate_parameters)
 
-    return new_params
+    return new_params, selected_client_ids
 
 
 

@@ -2,7 +2,7 @@ aggregation: multiKrum_logits
 attack_client: Backdoor # TargetedAttack
 attack_epochs: 10
 attack_server: null
-backdoor_config: configs/backdoor_tasks/mnist_params_pattern.yaml # configs/backdoor_tasks/cifar10_params.yaml
+backdoor_config: configs/backdoor_tasks/mnist_params_pattern.yaml
 backdoor_type: 9-pixel # 1-pixel
 batch_size: 32
 clients_per_round: 10
@@ -13,22 +13,22 @@ data_sampler: uniform # dirichlet # dirichlet, n_labels (not valid), uniform
 data_sampler_args:
 - 5
 - 42
-dataset_name: fashion-mnist # cifar10
+dataset_name: fashion-mnist
 defense: null # LeadFL
-epochs: 10 # 10
-experiment_prefix: MNIST-AFTER-SOFTMAX-FIX_CONSISTENT_cifar10_uniform #TESTING_BULYAN 
-run_prefix: "c2c"
+epochs: 10
+experiment_prefix: TESTING_CLIENT-SIZES
+run_prefix: ""
 mal_boost: 1
 mal_clients_per_round: 2
-net_name: FashionMNISTCNN # Cifar10CNN
+net_name: FashionMNISTCNN
 num_clients: 100
 num_mal_clients: 25
 offload_stategy: deadline
 output_location: output
 pert_strength: 0.2
 regular_weight: 0.4
-rounds: 50
-selection_method: consistent # (random: for this method, mal_clients_per_round doesn't have any effect, for num_clients/num_mal_clients/clients_per_round=100/25/10, there are on average 2.5 malicious selected
+rounds: 100
+selection_method: consistent # random # (random: for this method, mal_clients_per_round doesn't have any effect, for num_clients/num_mal_clients/clients_per_round=100/25/10, there are on average 2.5 malicious selected
 single_machine: true
 tensor_board_active: true
 use_wandb: true
@@ -40,10 +40,11 @@ pseudo_lr: 0.9 # best
 pseudo_momentum: 0.99 # best
 pseudo_iterations: 1000 # best
 num_pseudo_patterns_per_label: 10
+pseudo_real_dataset_name: fashion_mnist
 input_width: 28
 input_height: 28
 input_channels: 1
 num_clients_to_select: 5 # no longer need, now calculated as num_client_per_round - mal_clients_per_roun
-use_server_alignment: false  # best setting is client to client alignment
+use_server_alignment: false # best setting is client to client alignment
 use_real_images: false
 #############################

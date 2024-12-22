@@ -4,7 +4,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 from scipy.spatial.distance import cosine
 from types import SimpleNamespace
-from scipy.spatial.distance import cosine
+import torch.nn.functional as F
 
 
 def normalize_client_sample_quantities(client_sizes):
@@ -114,7 +114,7 @@ def generate_pseudo_patterns(
     return pseudo_patterns, labels
 
 
-def optimize_pseudo_patterns(pseudo_patterns, labels, model, device, iterations, lr, momentum) -> Dict[int, torch.Tensor]:
+def optimize_pseudo_patterns(pseudo_patterns, labels, model, device, iterations, lr, momentum, use_softmax=False) -> Dict[int, torch.Tensor]:
     """
     Generates and optimizes pseudo patterns at the server.
     
@@ -138,9 +138,18 @@ def optimize_pseudo_patterns(pseudo_patterns, labels, model, device, iterations,
 
     optimizer = torch.optim.SGD([pseudo_patterns], lr=lr, momentum=momentum)
 
+    # optimize each pseudo pattern for the label assigned to it. In essence this
+    # is maximizing the activation of the neurons for this label - so the pseudo
+    # pattern becomes a proxy for the data responsible learning that label class.
+    # Also, we are using the logits directly rather than softmax output as it
+    # more semantically represent the relationships between the score for each
+    # class label
     for _ in range(iterations):
         optimizer.zero_grad()
         outputs = model(pseudo_patterns)
+        # apply softmax if use_softmax is True
+        if use_softmax:
+            outputs = F.softmax(outputs, dim=1)
         losses = -outputs[torch.arange(len(labels)), labels]
         loss = losses.mean()
         loss.backward()

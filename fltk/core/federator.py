@@ -11,6 +11,7 @@ from typing import List, Union, Tuple
 import torch.nn.functional as F
 import torch
 import os
+import random
 
 
 import wandb
@@ -506,6 +507,16 @@ class Federator(Node):
                 self.clients, self.config.clients_per_round
             )
 
+        ##############################################
+        # elif self.config.selection_method == "random_2_mal":
+        #     num_mal = random.choice([0, 1, 2])
+        #     selected_mal_clients = random_selection(self.mal_clients, num_mal)
+        #     selected_benign_clients = random_selection(self.benign_clients, self.config.clients_per_round - num_mal)
+        #     selected_clients = np.concatenate(
+        #         (selected_benign_clients, selected_mal_clients)
+        #     )
+        ##############################################
+
         elif self.config.selection_method == "consistent":
             selected_benign_clients = random_selection(
                 self.benign_clients,
@@ -740,6 +751,18 @@ class Federator(Node):
             # selected_mal_clients = list(set(item.lower() for item in self.true_mal) & set(item.lower() for item in selected_client_ids))
             # print(f"##################", true_mal_ids, selected_client_ids)
 
+        elif self.config.aggregation.value in ["multiKrum"]:
+            updated_model, multiKrum_stage_selected_client_ids = self.aggregation_method(client_weights, client_sizes, self.config)
+            true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]
+            selected_client_ids = multiKrum_stage_selected_client_ids  # this is just based on the multiKrum stage client selection - bulyan aggregates based on layers
+            selected_mal_clients_by_aggr = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
+
+        # elif self.config.aggregation.value in ["clustering"]:
+        #     updated_model, clustering_selected_client_ids = self.aggregation_method(client_weights, client_sizes)
+        #     true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]
+        #     selected_client_ids = clustering_selected_client_ids  # this is just based on the multiKrum stage client selection - bulyan aggregates based on layers
+        #     selected_mal_clients_by_aggr = list(filter(lambda x: x in true_mal_ids, selected_client_ids))
+       
         elif self.config.aggregation.value in ["bulyan"]:
             updated_model, multiKrum_stage_selected_client_ids = self.aggregation_method(self.config, client_weights, client_sizes)
             true_mal_ids = [f"client{int_id}" for int_id in self.true_mal]

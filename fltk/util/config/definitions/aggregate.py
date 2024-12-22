@@ -16,3 +16,4 @@ class Aggregations(Enum):
     krum_logits = "krum_logits"
     multiKrum_logits = "multiKrum_logits"
     bulyan_logits = "bulyan_logits"
+    clustering = "clustering"
